@@ -34,21 +34,90 @@ type AuthActions = {
 const SessionCtx = createContext<SessionState | null>(null);
 const ActionsCtx = createContext<AuthActions | null>(null);
 
-export function SessionProvider({ children }: { children: React.ReactNode }) {
-  const [state, setState] = useState<SessionState>({ ready: false, userId: null, accessToken: null, accessTokenExpiresAt: null });
-  const refreshInFlightRef = useRef<Promise<string | null> | null>(null);
+const SESSION_USER_ID_STORAGE_KEY = "ager.session.userId";
+const SESSION_ACCESS_TOKEN_STORAGE_KEY = "ager.session.accessToken";
+const SESSION_ACCESS_TOKEN_EXPIRES_AT_STORAGE_KEY = "ager.session.accessTokenExpiresAt";
 
-  const clearSession = useCallback(() => {
-    setState({ ready: true, userId: null, accessToken: null, accessTokenExpiresAt: null });
+function isBrowser() {
+  return typeof window !== "undefined";
+}
+
+function hasUsableAccessToken(expiresAt: string | null) {
+  if (!expiresAt) return false;
+  const expiryTime = new Date(expiresAt).getTime();
+  if (Number.isNaN(expiryTime)) return false;
+  return expiryTime > Date.now() + 15_000;
+}
+
+function readStoredSession(): SessionState {
+  if (!isBrowser()) {
+    return { ready: false, userId: null, accessToken: null, accessTokenExpiresAt: null };
+  }
+
+  const userId = window.localStorage.getItem(SESSION_USER_ID_STORAGE_KEY);
+  const accessToken = window.localStorage.getItem(SESSION_ACCESS_TOKEN_STORAGE_KEY);
+  const accessTokenExpiresAt = window.localStorage.getItem(SESSION_ACCESS_TOKEN_EXPIRES_AT_STORAGE_KEY);
+
+  if (accessToken && hasUsableAccessToken(accessTokenExpiresAt)) {
+    return {
+      ready: true,
+      userId,
+      accessToken,
+      accessTokenExpiresAt,
+    };
+  }
+
+  if (isBrowser()) {
+    window.localStorage.removeItem(SESSION_USER_ID_STORAGE_KEY);
+    window.localStorage.removeItem(SESSION_ACCESS_TOKEN_STORAGE_KEY);
+    window.localStorage.removeItem(SESSION_ACCESS_TOKEN_EXPIRES_AT_STORAGE_KEY);
+  }
+
+  return { ready: false, userId: null, accessToken: null, accessTokenExpiresAt: null };
+}
+
+function persistSession(next: Omit<SessionState, "ready">) {
+  if (!isBrowser()) return;
+
+  if (next.userId && next.accessToken && next.accessTokenExpiresAt) {
+    window.localStorage.setItem(SESSION_USER_ID_STORAGE_KEY, next.userId);
+    window.localStorage.setItem(SESSION_ACCESS_TOKEN_STORAGE_KEY, next.accessToken);
+    window.localStorage.setItem(SESSION_ACCESS_TOKEN_EXPIRES_AT_STORAGE_KEY, next.accessTokenExpiresAt);
+    return;
+  }
+
+  window.localStorage.removeItem(SESSION_USER_ID_STORAGE_KEY);
+  window.localStorage.removeItem(SESSION_ACCESS_TOKEN_STORAGE_KEY);
+  window.localStorage.removeItem(SESSION_ACCESS_TOKEN_EXPIRES_AT_STORAGE_KEY);
+}
+
+export function SessionProvider({ children }: { children: React.ReactNode }) {
+  const [state, setState] = useState<SessionState>(() => readStoredSession());
+  const refreshInFlightRef = useRef<Promise<string | null> | null>(null);
+  const bootStateRef = useRef(state);
+
+  const updateSession = useCallback((next: SessionState) => {
+    setState(next);
+    persistSession({
+      userId: next.userId,
+      accessToken: next.accessToken,
+      accessTokenExpiresAt: next.accessTokenExpiresAt,
+    });
   }, []);
 
-  const refresh = useCallback(async (): Promise<string | null> => {
+  const clearSession = useCallback(() => {
+    updateSession({ ready: true, userId: null, accessToken: null, accessTokenExpiresAt: null });
+  }, [updateSession]);
+
+  const runRefresh = useCallback(async (options?: { clearOnUnauthorized?: boolean }): Promise<string | null> => {
+    const clearOnUnauthorized = options?.clearOnUnauthorized ?? true;
+
     if (refreshInFlightRef.current) return refreshInFlightRef.current;
 
     const inFlight = (async () => {
       try {
         const data = await apiRefresh();
-        setState({
+        updateSession({
           ready: true,
           userId: data.userId,
           accessToken: data.accessToken,
@@ -57,7 +126,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
         return data.accessToken ?? null;
       } catch (error) {
         const apiError = error as ApiError;
-        if (apiError?.status === 401) {
+        if (apiError?.status === 401 && clearOnUnauthorized) {
           clearSession();
         }
         throw error;
@@ -68,14 +137,27 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
 
     refreshInFlightRef.current = inFlight;
     return inFlight;
-  }, [clearSession]);
+  }, [clearSession, updateSession]);
+
+  const refresh = useCallback(async (): Promise<string | null> => {
+    return runRefresh();
+  }, [runRefresh]);
 
   // On full page reload, SessionProvider state resets. Re-hydrate via refresh token flow.
   useEffect(() => {
     let cancelled = false;
     (async () => {
+      if (bootStateRef.current.accessToken && hasUsableAccessToken(bootStateRef.current.accessTokenExpiresAt)) {
+        try {
+          await runRefresh({ clearOnUnauthorized: false });
+        } catch {
+          // Keep the stored access token until it actually expires or a protected request fails.
+        }
+        return;
+      }
+
       try {
-        const nextToken = await refresh();
+        const nextToken = await runRefresh();
         if (cancelled) return;
         if (!nextToken) clearSession();
       } catch {
@@ -86,7 +168,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, [refresh, clearSession]);
+  }, [runRefresh, clearSession]);
 
   const requestLoginOtp = useCallback(async (email: string) => {
     await apiRequestLoginOtp(email);
@@ -100,8 +182,8 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     }
 
     const data = await apiLogin(payload);
-    setState({ ready: true, userId: data.userId, accessToken: data.accessToken, accessTokenExpiresAt: data.accessTokenExpiresAt });
-  }, []);
+    updateSession({ ready: true, userId: data.userId, accessToken: data.accessToken, accessTokenExpiresAt: data.accessTokenExpiresAt });
+  }, [updateSession]);
 
   const requestRegisterOtp = useCallback(async (payload: { username: string; email: string }) => {
     await apiRequestRegisterOtp(payload.username, payload.email);
@@ -109,18 +191,18 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
 
   const register = useCallback(async (payload: { username: string; email: string; otpCode: string; password?: string | null }) => {
     const data = await apiRegisterWithOtp(payload.username, payload.email, payload.otpCode, payload.password);
-    setState({ ready: true, userId: data.userId, accessToken: data.accessToken, accessTokenExpiresAt: data.accessTokenExpiresAt });
-  }, []);
+    updateSession({ ready: true, userId: data.userId, accessToken: data.accessToken, accessTokenExpiresAt: data.accessTokenExpiresAt });
+  }, [updateSession]);
 
   const oauthGoogle = useCallback(async (idToken: string) => {
     const data = await apiOauthGoogle(idToken);
-    setState({ ready: true, userId: data.userId, accessToken: data.accessToken, accessTokenExpiresAt: data.accessTokenExpiresAt });
-  }, []);
+    updateSession({ ready: true, userId: data.userId, accessToken: data.accessToken, accessTokenExpiresAt: data.accessTokenExpiresAt });
+  }, [updateSession]);
 
   const oauthApple = useCallback(async (idToken: string) => {
     const data = await apiOauthApple(idToken);
-    setState({ ready: true, userId: data.userId, accessToken: data.accessToken, accessTokenExpiresAt: data.accessTokenExpiresAt });
-  }, []);
+    updateSession({ ready: true, userId: data.userId, accessToken: data.accessToken, accessTokenExpiresAt: data.accessTokenExpiresAt });
+  }, [updateSession]);
 
   const logout = useCallback(async () => {
     try {
