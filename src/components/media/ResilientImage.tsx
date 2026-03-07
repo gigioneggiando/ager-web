@@ -5,9 +5,27 @@ import { useState } from "react";
 
 type Props = Omit<ImageProps, "onError"> & { alt: string };
 
+function isRemoteUrl(src: ImageProps["src"]) {
+  return typeof src === "string" && /^https?:\/\//i.test(src);
+}
+
 export default function ResilientImage(props: Props) {
   const [broken, setBroken] = useState(false);
   const { alt, ...imageProps } = props;
+
+  if (isRemoteUrl(imageProps.src)) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src={imageProps.src as string}
+        alt={alt}
+        width={typeof imageProps.width === "number" ? imageProps.width : undefined}
+        height={typeof imageProps.height === "number" ? imageProps.height : undefined}
+        className={imageProps.className}
+        loading="lazy"
+      />
+    );
+  }
 
   if (broken) {
     return (

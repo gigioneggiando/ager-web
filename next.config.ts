@@ -11,6 +11,7 @@ export default withNextIntl({
     remotePatterns: [
       { protocol: 'https', hostname: 'thevision.com' },
       { protocol: 'https', hostname: '*.thevision.com' },
+      { protocol: 'https', hostname: 'thevision-media.s3.eu-south-1.amazonaws.com' },
 
       { protocol: 'https', hostname: '*.ansa.it' },
 

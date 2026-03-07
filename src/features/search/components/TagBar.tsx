@@ -61,9 +61,11 @@ export default function TagBar(props: {
           </DropdownMenuTrigger>
 
           <DropdownMenuContent
+            side="bottom"
             align="start"
             sideOffset={8}
-            className="w-[min(22rem,calc(100vw-2rem))] max-w-[calc(100vw-2rem)]"
+            collisionPadding={16}
+            className="w-[calc(100vw-2rem)] min-w-0 max-w-sm max-h-[min(20rem,calc(100vh-7rem))] sm:w-[min(22rem,calc(100vw-2rem))] sm:max-w-[calc(100vw-2rem)]"
           >
             {tags.map((t) => {
               const selected = selectedTag === t.slug;
