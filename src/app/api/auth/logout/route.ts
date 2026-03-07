@@ -7,16 +7,16 @@ const API_BASE = getApiBase();
 const BACKEND_AUTH = `${API_BASE}/api/auth`;
 
 export async function POST(req: Request) {
-  const refreshCookie = await readRefreshCookie();
+  let refreshToken: string | null = null;
+  try {
+    const body = (await req.json()) as Partial<LogoutRequest>;
+    if (typeof body?.refreshToken === "string") refreshToken = body.refreshToken;
+  } catch {
+    // ignore
+  }
 
-  let refreshToken: string | null = refreshCookie;
   if (!refreshToken) {
-    try {
-      const body = (await req.json()) as Partial<LogoutRequest>;
-      if (typeof body?.refreshToken === "string") refreshToken = body.refreshToken;
-    } catch {
-      // ignore
-    }
+    refreshToken = await readRefreshCookie();
   }
 
   if (refreshToken) {

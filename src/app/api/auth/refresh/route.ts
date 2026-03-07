@@ -7,15 +7,16 @@ const API_BASE = getApiBase();
 const BACKEND_AUTH = `${API_BASE}/api/auth`;
 
 export async function POST(req: Request) {
-  const refreshCookie = await readRefreshCookie();
-  let refreshToken: string | null = refreshCookie;
+  let refreshToken: string | null = null;
+  try {
+    const body = (await req.json()) as Partial<RefreshTokenRequest>;
+    if (typeof body?.refreshToken === "string") refreshToken = body.refreshToken;
+  } catch {
+    // ignore
+  }
+
   if (!refreshToken) {
-    try {
-      const body = (await req.json()) as Partial<RefreshTokenRequest>;
-      if (typeof body?.refreshToken === "string") refreshToken = body.refreshToken;
-    } catch {
-      // ignore
-    }
+    refreshToken = await readRefreshCookie();
   }
 
   if (!refreshToken) return NextResponse.json({ title: "Unauthorized", status: 401 }, { status: 401 });
