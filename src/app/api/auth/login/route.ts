@@ -1,11 +1,9 @@
 import { NextResponse } from "next/server";
 import { setRefreshCookie } from "@/lib/auth/cookie";
 import type { AuthResultDto, LoginRequest } from "@/lib/auth/types";
+import { getApiBase, toProxyResponse } from "@/app/api/auth/_shared";
 
-const API_BASE = (process.env.API_BASE_URL ?? process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8080").replace(
-  /\/+$/,
-  ""
-);
+const API_BASE = getApiBase();
 const BACKEND_AUTH = `${API_BASE}/api/auth`;
 
 export async function POST(req: Request) {
@@ -18,8 +16,7 @@ export async function POST(req: Request) {
   });
 
   if (!res.ok) {
-    const err = await safeJson(res);
-    return NextResponse.json(err ?? { message: "Login failed" }, { status: res.status });
+    return toProxyResponse(res);
   }
 
   const data = (await res.json()) as AuthResultDto;
@@ -28,11 +25,5 @@ export async function POST(req: Request) {
     await setRefreshCookie(data.refreshToken, data.refreshTokenExpiresAt ?? null);
   }
 
-  return NextResponse.json({
-    userId: data.userId,
-    accessToken: data.accessToken,
-    accessTokenExpiresAt: data.accessTokenExpiresAt
-  });
+  return NextResponse.json(data);
 }
-
-async function safeJson(r: Response) { try { return await r.json(); } catch { return null; } }

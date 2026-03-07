@@ -1,12 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { ApiError } from "@/lib/api/errors";
-import { restoreAccountByEmail } from "@/lib/api/restore";
+import { requestRestoreCode, restoreAccountByOtp } from "@/lib/api/restore";
 
 type Props = {
   open: boolean;
@@ -20,10 +20,8 @@ function mapRestoreError(locale: "it" | "en", code?: string) {
   switch (code) {
     case "user_not_found":
       return it ? "Utente non trovato." : "User not found.";
-    case "user_deleted": // if your domain still returns it in some cases
-      return it ? "Account già eliminato." : "Account already deleted.";
-    case "invalid_old_password":
-      return it ? "Password precedente non corretta." : "Incorrect old password.";
+    case "invalid_otp":
+      return it ? "Codice non valido o scaduto." : "Invalid or expired code.";
     case "account_not_deleted":
       return it ? "L’account non risulta eliminato." : "This account is not deleted.";
     default:
@@ -34,33 +32,78 @@ function mapRestoreError(locale: "it" | "en", code?: string) {
 export default function RestoreAccountDialog({ open, onOpenChange, locale, email }: Props) {
   const isIt = locale === "it";
   const [formEmail, setFormEmail] = useState(email ?? "");
-  const [oldPassword, setOldPassword] = useState("");
+  const [otpCode, setOtpCode] = useState("");
   const [isPending, setIsPending] = useState(false);
+  const [step, setStep] = useState<"request" | "verify">("request");
+  const [resendAvailableAt, setResendAvailableAt] = useState<number | null>(null);
+  const [now, setNow] = useState<number>(() => Date.now());
+
+  const resendSecondsLeft = useMemo(() => {
+    if (!resendAvailableAt) return 0;
+    return Math.max(0, Math.ceil((resendAvailableAt - now) / 1000));
+  }, [resendAvailableAt, now]);
 
   useEffect(() => {
     if (open) {
       // prefill email when opening
       setFormEmail(email ?? "");
-      setOldPassword("");
+      setOtpCode("");
+      setStep("request");
+      setResendAvailableAt(null);
     }
   }, [open, email]);
 
-  async function onRestore() {
+  useEffect(() => {
+    if (!open || step !== "verify" || !resendAvailableAt) return;
+    const t = setInterval(() => setNow(Date.now()), 250);
+    return () => clearInterval(t);
+  }, [open, step, resendAvailableAt]);
+
+  async function onRequestCode() {
     const e = formEmail.trim();
-    const p = oldPassword.trim();
 
     if (!e) {
       toast(isIt ? "Inserisci l’email" : "Enter your email");
       return;
     }
-    if (!p) {
-      toast(isIt ? "Inserisci la vecchia password" : "Enter your old password");
+
+    setIsPending(true);
+    try {
+      await requestRestoreCode(e);
+      setStep("verify");
+      setResendAvailableAt(Date.now() + 30_000);
+      toast(
+        isIt
+          ? "Se l'account esiste, abbiamo inviato un codice"
+          : "If the account exists, we sent a code"
+      );
+    } catch (err) {
+      const e = err as ApiError;
+      toast(isIt ? "Errore" : "Error", {
+        description: mapRestoreError(locale, e.code) || e.message,
+      });
+    } finally {
+      setIsPending(false);
+    }
+  }
+
+  async function onRestore() {
+    const e = formEmail.trim();
+    const code = otpCode.trim();
+
+    if (!e) {
+      toast(isIt ? "Inserisci l’email" : "Enter your email");
+      return;
+    }
+
+    if (!/^\d{6}$/.test(code)) {
+      toast(isIt ? "Inserisci un codice di 6 cifre" : "Enter a 6-digit code");
       return;
     }
 
     setIsPending(true);
     try {
-      await restoreAccountByEmail(e, p);
+      await restoreAccountByOtp(e, code);
       toast(isIt ? "Account ripristinato" : "Account restored", {
         description: isIt ? "Ora puoi effettuare il login." : "You can now log in.",
       });
@@ -82,8 +125,8 @@ export default function RestoreAccountDialog({ open, onOpenChange, locale, email
           <DialogTitle>{isIt ? "Ripristina account" : "Restore account"}</DialogTitle>
           <DialogDescription>
             {isIt
-              ? "Inserisci email e la password precedente per ripristinare l’account eliminato."
-              : "Enter your email and previous password to restore the deleted account."}
+              ? "Inserisci email e verifica con OTP per ripristinare l’account eliminato."
+              : "Enter your email and verify with OTP to restore your deleted account."}
           </DialogDescription>
         </DialogHeader>
 
@@ -99,23 +142,40 @@ export default function RestoreAccountDialog({ open, onOpenChange, locale, email
             />
           </div>
 
-          <div className="space-y-2">
-            <label className="text-sm font-medium">{isIt ? "Vecchia password" : "Old password"}</label>
-            <Input
-              type="password"
-              value={oldPassword}
-              onChange={(ev) => setOldPassword(ev.target.value)}
-              autoComplete="current-password"
-            />
-          </div>
+          {step === "verify" && (
+            <div className="space-y-2">
+              <label className="text-sm font-medium">OTP</label>
+              <Input
+                value={otpCode}
+                onChange={(ev) => setOtpCode(ev.target.value.replace(/\D/g, "").slice(0, 6))}
+                inputMode="numeric"
+                autoComplete="one-time-code"
+              />
+            </div>
+          )}
         </div>
 
         <div className="mt-4 flex justify-end gap-2">
           <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={isPending}>
             {isIt ? "Annulla" : "Cancel"}
           </Button>
-          <Button onClick={onRestore} disabled={isPending}>
-            {isPending ? (isIt ? "Ripristino…" : "Restoring…") : (isIt ? "Ripristina" : "Restore")}
+          {step === "verify" && (
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={onRequestCode}
+              disabled={isPending || resendSecondsLeft > 0}
+            >
+              {isIt ? "Invia di nuovo" : "Resend"}
+              {resendSecondsLeft > 0 ? ` (${resendSecondsLeft}s)` : ""}
+            </Button>
+          )}
+          <Button onClick={step === "request" ? onRequestCode : onRestore} disabled={isPending}>
+            {isPending
+              ? (isIt ? "Invio…" : "Sending…")
+              : step === "request"
+                ? (isIt ? "Richiedi codice" : "Request code")
+                : (isIt ? "Ripristina" : "Restore")}
           </Button>
         </div>
       </DialogContent>

@@ -1,5 +1,5 @@
 export type AuthResultDto = {
-  userId: number;
+  userId: string;
   accessToken: string;
   accessTokenExpiresAt: string;     // ISO
   refreshToken?: string | null;
@@ -48,4 +48,28 @@ export type ResetForgotPasswordRequest = {
 
 export type LogoutRequest = {
   refreshToken: string;
+};
+
+export type CsrfBootstrapResponse = {
+  token: string;
+};
+
+export type RequestRestoreOtpCodeRequest = {
+  email: string;
+};
+
+export type RestoreAccountRequest = {
+  email: string;
+  otpCode: string;
+};
+
+export type PasswordStrengthRequest = {
+  password: string;
+};
+
+export type PasswordStrengthResponse = {
+  score: number;
+  strength: string;
+  warnings: string[];
+  suggestions: string[];
 };

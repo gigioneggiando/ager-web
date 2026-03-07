@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { useMeQuery, useUpdateMe, useChangePassword, useDeleteMe } from "@/features/profile/hooks/useMe";
 import type { UpdateMyProfileRequest } from "@/lib/api/me.types";
 import { ApiError } from "@/lib/api/me";
+import { getProblemDetailsFieldErrors, getRetryAfterSeconds } from "@/lib/api/errors";
 import { getPasswordRuleIssues } from "@/lib/validation/password";
 
 function msg(code: string | undefined, locale: "it" | "en") {
@@ -20,7 +21,8 @@ function msg(code: string | undefined, locale: "it" | "en") {
     username_too_long: "Username troppo lungo.",
     username_taken: "Username già in uso.",
     password_not_set: "Questo account non ha una password impostata.",
-    invalid_old_password: "La vecchia password non è corretta."
+    invalid_old_password: "La vecchia password non è corretta.",
+    csrf_failed: "Sessione non valida. Ricarica la pagina e riprova."
   };
   const en: Record<string, string> = {
     unauthorized: "Session expired. Please log in again.",
@@ -29,7 +31,8 @@ function msg(code: string | undefined, locale: "it" | "en") {
     username_too_long: "Username is too long.",
     username_taken: "Username already taken.",
     password_not_set: "This account has no password set.",
-    invalid_old_password: "Old password is incorrect."
+    invalid_old_password: "Old password is incorrect.",
+    csrf_failed: "Invalid session state. Reload the page and retry."
   };
   if (!code) return locale === "it" ? "Errore imprevisto." : "Unexpected error.";
   return (locale === "it" ? it[code] : en[code]) ?? code;
@@ -62,6 +65,7 @@ export default function ProfilePage() {
   });
 
   const [pw, setPw] = useState({ oldPassword: "", newPassword: "", confirm: "" });
+  const [profileFieldErrors, setProfileFieldErrors] = useState<Record<string, string[]>>({});
 
   useEffect(() => {
     if (!me.data) return;
@@ -92,11 +96,42 @@ export default function ProfilePage() {
   const hasChanges = Object.keys(patch).length > 0;
 
   async function onSaveProfile() {
+    const nextFieldErrors: Record<string, string[]> = {};
+    if (draft.username.trim().length > 30) nextFieldErrors.username = [locale === "it" ? "Massimo 30 caratteri." : "Maximum 30 characters."];
+    if (draft.avatarUrl.trim().length > 255) nextFieldErrors.avatarUrl = [locale === "it" ? "Massimo 255 caratteri." : "Maximum 255 characters."];
+    if ((draft.locale ?? "").trim().length > 10) nextFieldErrors.locale = [locale === "it" ? "Massimo 10 caratteri." : "Maximum 10 characters."];
+    if (draft.timezone.trim().length > 50) nextFieldErrors.timezone = [locale === "it" ? "Massimo 50 caratteri." : "Maximum 50 characters."];
+
+    setProfileFieldErrors(nextFieldErrors);
+    if (Object.keys(nextFieldErrors).length > 0) {
+      toast(locale === "it" ? "Correggi i campi evidenziati" : "Fix highlighted fields");
+      return;
+    }
+
     try {
       await update.mutateAsync(patch);
+      setProfileFieldErrors({});
       toast(locale === "it" ? "Profilo aggiornato" : "Profile updated");
     } catch (e) {
       const err = e as ApiError;
+      if (err.status === 422) {
+        setProfileFieldErrors(getProblemDetailsFieldErrors(err.details));
+        toast(locale === "it" ? "Correggi i campi evidenziati" : "Fix highlighted fields");
+        return;
+      }
+      if (err.status === 403) {
+        toast(locale === "it" ? "Operazione non consentita (CSRF)." : "Operation forbidden (CSRF).", {
+          description: msg(err.code, locale)
+        });
+        return;
+      }
+      if (err.status === 429) {
+        const retryAfter = getRetryAfterSeconds(err) ?? 60;
+        toast(locale === "it" ? "Troppi tentativi" : "Too many attempts", {
+          description: locale === "it" ? `Riprova tra ${retryAfter}s.` : `Try again in ${retryAfter}s.`
+        });
+        return;
+      }
       toast(locale === "it" ? "Errore" : "Error", {
         description: msg(err.code, locale)
       });
@@ -135,6 +170,26 @@ export default function ProfilePage() {
       setPw({ oldPassword: "", newPassword: "", confirm: "" });
     } catch (e) {
       const err = e as ApiError;
+      if (err.status === 403) {
+        toast(locale === "it" ? "Operazione non consentita (CSRF)." : "Operation forbidden (CSRF).", {
+          description: msg(err.code, locale)
+        });
+        return;
+      }
+      if (err.status === 422) {
+        const fieldErrors = getProblemDetailsFieldErrors(err.details);
+        toast(locale === "it" ? "Errore validazione" : "Validation error", {
+          description: Object.values(fieldErrors).flat()[0] ?? msg(err.code, locale)
+        });
+        return;
+      }
+      if (err.status === 429) {
+        const retryAfter = getRetryAfterSeconds(err) ?? 60;
+        toast(locale === "it" ? "Troppi tentativi" : "Too many attempts", {
+          description: locale === "it" ? `Riprova tra ${retryAfter}s.` : `Try again in ${retryAfter}s.`
+        });
+        return;
+      }
       toast(locale === "it" ? "Errore" : "Error", {
         description: msg(err.code, locale)
       });
@@ -158,6 +213,12 @@ export default function ProfilePage() {
       router.replace(`/${locale}/login`);
     } catch (e) {
       const err = e as ApiError;
+      if (err.status === 403) {
+        toast(locale === "it" ? "Operazione non consentita (CSRF)." : "Operation forbidden (CSRF).", {
+          description: msg(err.code, locale)
+        });
+        return;
+      }
       toast(locale === "it" ? "Errore" : "Error", {
         description: msg(err.code, locale)
       });
@@ -205,7 +266,9 @@ export default function ProfilePage() {
               value={draft.username}
               onChange={(e) => setDraft((d) => ({ ...d, username: e.target.value }))}
               placeholder={locale === "it" ? "Il tuo username" : "Your username"}
+              maxLength={30}
             />
+            {profileFieldErrors.username?.[0] && <p className="text-sm text-destructive">{profileFieldErrors.username[0]}</p>}
           </div>
 
           <div className="space-y-2">
@@ -215,7 +278,9 @@ export default function ProfilePage() {
               value={draft.avatarUrl}
               onChange={(e) => setDraft((d) => ({ ...d, avatarUrl: e.target.value }))}
               placeholder="https://…"
+              maxLength={255}
             />
+            {profileFieldErrors.avatarUrl?.[0] && <p className="text-sm text-destructive">{profileFieldErrors.avatarUrl[0]}</p>}
           </div>
 
           <div className="space-y-2">
@@ -229,6 +294,7 @@ export default function ProfilePage() {
               <option value="it">Italiano</option>
               <option value="en">English</option>
             </select>
+            {profileFieldErrors.locale?.[0] && <p className="text-sm text-destructive">{profileFieldErrors.locale[0]}</p>}
           </div>
 
           <div className="space-y-2">
@@ -238,7 +304,9 @@ export default function ProfilePage() {
               value={draft.timezone}
               onChange={(e) => setDraft((d) => ({ ...d, timezone: e.target.value }))}
               placeholder="Europe/Rome"
+              maxLength={50}
             />
+            {profileFieldErrors.timezone?.[0] && <p className="text-sm text-destructive">{profileFieldErrors.timezone[0]}</p>}
           </div>
         </div>
 

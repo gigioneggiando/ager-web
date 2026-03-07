@@ -16,7 +16,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { useEffect, useMemo, useState } from "react";
-import { ApiError, getProblemDetailsFieldErrors } from "@/lib/api/errors";
+import { ApiError, getProblemDetailsFieldErrors, getRetryAfterSeconds } from "@/lib/api/errors";
 import OAuthButtons from "@/components/auth/OAuthButtons";
 
 const REQUEST_SCHEMA = z.object({
@@ -82,13 +82,15 @@ export default function RegisterPage() {
   const [otpCode, setOtpCode] = useState("");
   const [password, setPassword] = useState<string>("");
   const [resendAvailableAt, setResendAvailableAt] = useState<number | null>(null);
+  const [rateLimitUntil, setRateLimitUntil] = useState<number | null>(null);
   const [now, setNow] = useState<number>(() => Date.now());
 
   useEffect(() => {
-    if (step !== "verify" || !resendAvailableAt) return;
+    if (step !== "verify" && !rateLimitUntil) return;
+    if (step === "verify" && !resendAvailableAt && !rateLimitUntil) return;
     const t = setInterval(() => setNow(Date.now()), 250);
     return () => clearInterval(t);
-  }, [step, resendAvailableAt]);
+  }, [step, resendAvailableAt, rateLimitUntil]);
 
   const resendSecondsLeft = useMemo(() => {
     if (!resendAvailableAt) return 0;
@@ -96,6 +98,11 @@ export default function RegisterPage() {
   }, [resendAvailableAt, now]);
 
   const canResend = step === "verify" && resendSecondsLeft === 0;
+  const rateLimitSecondsLeft = useMemo(() => {
+    if (!rateLimitUntil) return 0;
+    return Math.max(0, Math.ceil((rateLimitUntil - now) / 1000));
+  }, [rateLimitUntil, now]);
+  const isRateLimited = rateLimitSecondsLeft > 0;
 
   async function onRequestCode(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -118,7 +125,9 @@ export default function RegisterPage() {
     } catch (e: unknown) {
       const err = e as ApiError;
       if (err?.status === 429) {
-        setErrors(isIt ? "Troppi tentativi, riprova tra poco." : "Too many attempts, try again later.");
+        const retryAfter = getRetryAfterSeconds(err) ?? 60;
+        setRateLimitUntil(Date.now() + retryAfter * 1000);
+        setErrors(isIt ? `Troppi tentativi. Riprova tra ${retryAfter}s.` : `Too many attempts. Try again in ${retryAfter}s.`);
       } else if (err?.status === 400 && err?.code === "temporary_email_not_allowed") {
         setErrors(isIt ? TEMP_EMAIL_DETAIL_IT : TEMP_EMAIL_DETAIL_EN);
       } else if (err?.status === 409) {
@@ -161,6 +170,10 @@ export default function RegisterPage() {
       const err = e as ApiError;
       if (err?.status === 401) {
         setErrors(isIt ? "Codice non valido o scaduto." : "Invalid or expired code.");
+      } else if (err?.status === 429) {
+        const retryAfter = getRetryAfterSeconds(err) ?? 60;
+        setRateLimitUntil(Date.now() + retryAfter * 1000);
+        setErrors(isIt ? `Troppi tentativi. Riprova tra ${retryAfter}s.` : `Too many attempts. Try again in ${retryAfter}s.`);
       } else if (err?.status === 400 && err?.code === "temporary_email_not_allowed") {
         setErrors(isIt ? TEMP_EMAIL_DETAIL_IT : TEMP_EMAIL_DETAIL_EN);
       } else if (err?.status === 400 && err?.code === "otp_username_mismatch") {
@@ -193,7 +206,9 @@ export default function RegisterPage() {
     } catch (e: unknown) {
       const err = e as ApiError;
       if (err?.status === 429) {
-        setErrors(isIt ? "Troppi tentativi, riprova tra poco." : "Too many attempts, try again later.");
+        const retryAfter = getRetryAfterSeconds(err) ?? 60;
+        setRateLimitUntil(Date.now() + retryAfter * 1000);
+        setErrors(isIt ? `Troppi tentativi. Riprova tra ${retryAfter}s.` : `Too many attempts. Try again in ${retryAfter}s.`);
       } else if (err?.status === 400 && err?.code === "temporary_email_not_allowed") {
         setErrors(isIt ? TEMP_EMAIL_DETAIL_IT : TEMP_EMAIL_DETAIL_EN);
       } else {
@@ -258,8 +273,13 @@ export default function RegisterPage() {
                   />
                 </div>
                 {info && <p className="text-sm text-muted-foreground">{info}</p>}
+                {isRateLimited && (
+                  <p className="text-sm text-muted-foreground">
+                    {isIt ? `Attendi ${rateLimitSecondsLeft}s prima di riprovare.` : `Wait ${rateLimitSecondsLeft}s before retrying.`}
+                  </p>
+                )}
                 {errors && <p className="text-sm text-destructive">{errors}</p>}
-                <Button type="submit" disabled={pending} className="w-full">
+                <Button type="submit" disabled={pending || isRateLimited} className="w-full">
                   {pending
                     ? isIt
                       ? "Invio..."
@@ -320,10 +340,15 @@ export default function RegisterPage() {
                   </p>
                 </div>
                 {info && <p className="text-sm text-muted-foreground">{info}</p>}
+                {isRateLimited && (
+                  <p className="text-sm text-muted-foreground">
+                    {isIt ? `Attendi ${rateLimitSecondsLeft}s prima di riprovare.` : `Wait ${rateLimitSecondsLeft}s before retrying.`}
+                  </p>
+                )}
                 {errors && <p className="text-sm text-destructive">{errors}</p>}
 
                 <div className="flex gap-2">
-                  <Button type="submit" disabled={pending} className="flex-1">
+                  <Button type="submit" disabled={pending || isRateLimited} className="flex-1">
                     {pending
                       ? isIt
                         ? "Verifica..."
@@ -335,7 +360,7 @@ export default function RegisterPage() {
                   <Button
                     type="button"
                     variant="secondary"
-                    disabled={pending || !canResend}
+                    disabled={pending || isRateLimited || !canResend}
                     onClick={onResend}
                     className="flex-1"
                   >

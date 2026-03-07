@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useMemo, useState, useCallback, useEffect } from "react";
+import { createContext, useContext, useMemo, useState, useCallback, useEffect, useRef } from "react";
 import { ApiError } from "@/lib/api/errors";
 import {
   login as apiLogin,
@@ -15,7 +15,7 @@ import {
 
 type SessionState = {
   ready: boolean;
-  userId: number | null;
+  userId: string | null;
   accessToken: string | null;
   accessTokenExpiresAt: string | null;
 };
@@ -36,24 +36,57 @@ const ActionsCtx = createContext<AuthActions | null>(null);
 
 export function SessionProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<SessionState>({ ready: false, userId: null, accessToken: null, accessTokenExpiresAt: null });
+  const refreshInFlightRef = useRef<Promise<string | null> | null>(null);
 
-  // On full page reload, SessionProvider state resets. We re-hydrate via refresh cookie.
+  const clearSession = useCallback(() => {
+    setState({ ready: true, userId: null, accessToken: null, accessTokenExpiresAt: null });
+  }, []);
+
+  const refresh = useCallback(async (): Promise<string | null> => {
+    if (refreshInFlightRef.current) return refreshInFlightRef.current;
+
+    const inFlight = (async () => {
+      try {
+        const data = await apiRefresh();
+        setState({
+          ready: true,
+          userId: data.userId,
+          accessToken: data.accessToken,
+          accessTokenExpiresAt: data.accessTokenExpiresAt
+        });
+        return data.accessToken ?? null;
+      } catch (error) {
+        const apiError = error as ApiError;
+        if (apiError?.status === 401) {
+          clearSession();
+        }
+        throw error;
+      } finally {
+        refreshInFlightRef.current = null;
+      }
+    })();
+
+    refreshInFlightRef.current = inFlight;
+    return inFlight;
+  }, [clearSession]);
+
+  // On full page reload, SessionProvider state resets. Re-hydrate via refresh token flow.
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
-        const data = await apiRefresh();
+        const nextToken = await refresh();
         if (cancelled) return;
-        setState({ ready: true, userId: data.userId, accessToken: data.accessToken, accessTokenExpiresAt: data.accessTokenExpiresAt });
+        if (!nextToken) clearSession();
       } catch {
         if (cancelled) return;
-        setState({ ready: true, userId: null, accessToken: null, accessTokenExpiresAt: null });
+        clearSession();
       }
     })();
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [refresh, clearSession]);
 
   const requestLoginOtp = useCallback(async (email: string) => {
     await apiRequestLoginOtp(email);
@@ -89,19 +122,13 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     setState({ ready: true, userId: data.userId, accessToken: data.accessToken, accessTokenExpiresAt: data.accessTokenExpiresAt });
   }, []);
 
-  const refresh = useCallback(async (): Promise<string | null> => {
-    const data = await apiRefresh();
-    setState({ ready: true, userId: data.userId, accessToken: data.accessToken, accessTokenExpiresAt: data.accessTokenExpiresAt });
-    return data.accessToken ?? null;
-  }, []);
-
   const logout = useCallback(async () => {
     try {
       await apiLogout(state.accessToken);
     } finally {
-      setState({ ready: true, userId: null, accessToken: null, accessTokenExpiresAt: null });
+      clearSession();
     }
-  }, [state.accessToken]);
+  }, [state.accessToken, clearSession]);
 
   const actions = useMemo<AuthActions>(
     () => ({ requestLoginOtp, login, requestRegisterOtp, register, oauthGoogle, oauthApple, refresh, logout }),

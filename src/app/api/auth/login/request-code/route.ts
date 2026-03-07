@@ -1,10 +1,8 @@
 import { NextResponse } from "next/server";
 import type { RequestLoginOtpCodeRequest } from "@/lib/auth/types";
+import { getApiBase, toProxyResponse } from "@/app/api/auth/_shared";
 
-const API_BASE = (process.env.API_BASE_URL ?? process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8080").replace(
-  /\/+$/,
-  ""
-);
+const API_BASE = getApiBase();
 const BACKEND_AUTH = `${API_BASE}/api/auth`;
 
 export async function POST(req: Request) {
@@ -17,8 +15,7 @@ export async function POST(req: Request) {
   });
 
   if (!res.ok) {
-    const err = await safeJson(res);
-    return NextResponse.json(err ?? { message: "Request code failed" }, { status: res.status });
+    return toProxyResponse(res);
   }
 
   const data = await safeJson(res);

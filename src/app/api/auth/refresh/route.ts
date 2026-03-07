@@ -1,11 +1,9 @@
 import { NextResponse } from "next/server";
-import { readRefreshCookie, setRefreshCookie } from "@/lib/auth/cookie";
+import { clearRefreshCookie, readRefreshCookie, setRefreshCookie } from "@/lib/auth/cookie";
 import type { AuthResultDto, RefreshTokenRequest } from "@/lib/auth/types";
+import { getApiBase, toProxyResponse } from "@/app/api/auth/_shared";
 
-const API_BASE = (process.env.API_BASE_URL ?? process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8080").replace(
-  /\/+$/,
-  ""
-);
+const API_BASE = getApiBase();
 const BACKEND_AUTH = `${API_BASE}/api/auth`;
 
 export async function POST(req: Request) {
@@ -20,7 +18,7 @@ export async function POST(req: Request) {
     }
   }
 
-  if (!refreshToken) return NextResponse.json({ message: "No refresh token" }, { status: 401 });
+  if (!refreshToken) return NextResponse.json({ title: "Unauthorized", status: 401 }, { status: 401 });
 
   const res = await fetch(`${BACKEND_AUTH}/refresh`, {
     method: "POST",
@@ -29,7 +27,10 @@ export async function POST(req: Request) {
   });
 
   if (!res.ok) {
-    return NextResponse.json({ message: "Refresh failed" }, { status: 401 });
+    if (res.status === 401) {
+      await clearRefreshCookie();
+    }
+    return toProxyResponse(res);
   }
 
   const data = (await res.json()) as AuthResultDto;
@@ -38,9 +39,5 @@ export async function POST(req: Request) {
     await setRefreshCookie(data.refreshToken, data.refreshTokenExpiresAt ?? null);
   }
 
-  return NextResponse.json({
-    userId: data.userId,
-    accessToken: data.accessToken,
-    accessTokenExpiresAt: data.accessTokenExpiresAt
-  });
+  return NextResponse.json(data);
 }

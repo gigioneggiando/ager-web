@@ -1,49 +1,36 @@
 import { NextResponse } from "next/server";
+import type { RestoreAccountRequest } from "@/lib/auth/types";
+import { getApiBase, toProxyResponse } from "@/app/api/auth/_shared";
 
-type RestoreAccountByEmailRequest = {
-  email: string;
-  oldPassword: string;
-};
-
-const API_BASE =
-  process.env.API_BASE_URL ??
-  process.env.NEXT_PUBLIC_API_BASE_URL ??
-  "http://localhost:8080";
+const API_BASE = getApiBase();
 
 export async function POST(request: Request) {
-  let body: RestoreAccountByEmailRequest;
+  let body: RestoreAccountRequest;
 
   try {
-    body = (await request.json()) as RestoreAccountByEmailRequest;
+    body = (await request.json()) as RestoreAccountRequest;
   } catch {
-    return NextResponse.json({ error: "invalid_json" }, { status: 400 });
+    return NextResponse.json({ title: "Invalid JSON", status: 400 }, { status: 400 });
   }
 
   const email = (body.email ?? "").trim();
-  const oldPassword = (body.oldPassword ?? "").trim();
+  const otpCode = (body.otpCode ?? "").trim();
 
   if (!email) {
-    return NextResponse.json({ error: "email_required" }, { status: 400 });
+    return NextResponse.json({ title: "Email required", status: 400 }, { status: 400 });
   }
-  if (!oldPassword) {
-    return NextResponse.json({ error: "old_password_required" }, { status: 400 });
+  if (!otpCode) {
+    return NextResponse.json({ title: "OTP code required", status: 400 }, { status: 400 });
   }
 
   const res = await fetch(`${API_BASE}/api/auth/restore`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email, oldPassword }),
+    body: JSON.stringify({ email, otpCode }),
   });
 
   if (!res.ok) {
-    // Forward your backend Result/ProblemDetails JSON as-is
-    const text = await res.text().catch(() => "");
-    return new NextResponse(text || null, {
-      status: res.status,
-      headers: {
-        "Content-Type": res.headers.get("Content-Type") ?? "application/json",
-      },
-    });
+    return toProxyResponse(res);
   }
 
   return NextResponse.json({ ok: true });

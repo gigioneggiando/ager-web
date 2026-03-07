@@ -1,15 +1,12 @@
 import { NextResponse } from "next/server";
 import { readRefreshCookie, clearRefreshCookie } from "@/lib/auth/cookie";
 import type { LogoutRequest } from "@/lib/auth/types";
+import { getApiBase, pickRequestHeaders, toProxyResponse } from "@/app/api/auth/_shared";
 
-const API_BASE = (process.env.API_BASE_URL ?? process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8080").replace(
-  /\/+$/,
-  ""
-);
+const API_BASE = getApiBase();
 const BACKEND_AUTH = `${API_BASE}/api/auth`;
 
 export async function POST(req: Request) {
-  const authHeader = req.headers.get("authorization") ?? undefined;
   const refreshCookie = await readRefreshCookie();
 
   let refreshToken: string | null = refreshCookie;
@@ -24,14 +21,17 @@ export async function POST(req: Request) {
 
   if (refreshToken) {
     try {
-      await fetch(`${BACKEND_AUTH}/logout`, {
+      const upstream = await fetch(`${BACKEND_AUTH}/logout`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          ...(authHeader ? { Authorization: authHeader } : {}),
+          ...pickRequestHeaders(req, ["authorization", "x-csrf-token", "cookie"]),
         },
         body: JSON.stringify({ refreshToken: refreshToken } satisfies LogoutRequest),
       });
+
+      await clearRefreshCookie();
+      return toProxyResponse(upstream);
     } catch {
       // ignore network errors on logout
     }

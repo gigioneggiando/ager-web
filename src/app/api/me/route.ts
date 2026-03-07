@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { toProxyResponse } from "@/app/api/auth/_shared";
 
 function getApiBase() {
   return (
@@ -16,6 +16,12 @@ async function proxyMe(req: Request, extraPath: string) {
   const headers: Record<string, string> = {};
   const auth = req.headers.get("authorization");
   if (auth) headers["authorization"] = auth;
+
+  const csrf = req.headers.get("x-csrf-token");
+  if (csrf) headers["x-csrf-token"] = csrf;
+
+  const cookie = req.headers.get("cookie");
+  if (cookie) headers["cookie"] = cookie;
 
   const contentType = req.headers.get("content-type");
   if (contentType) headers["content-type"] = contentType;
@@ -35,23 +41,7 @@ async function proxyMe(req: Request, extraPath: string) {
     cache: "no-store",
   });
 
-  if (res.status === 204) {
-    return new NextResponse(null, { status: 204 });
-  }
-
-  const resContentType = res.headers.get("content-type") ?? "";
-  const isJson = resContentType.includes("application/json");
-
-  if (isJson) {
-    const data = await res.json().catch(() => null);
-    return NextResponse.json(data, { status: res.status });
-  }
-
-  const text = await res.text().catch(() => "");
-  return new NextResponse(text, {
-    status: res.status,
-    headers: { "content-type": resContentType || "text/plain" },
-  });
+  return toProxyResponse(res);
 }
 
 export async function GET(req: Request) {

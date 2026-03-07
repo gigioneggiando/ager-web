@@ -218,7 +218,7 @@ export async function getReadingListItemsPage(
 // GET /api/reading-lists/public/users/{ownerUserId}/{slug}
 
 export async function getPublicReadingList(
-  ownerUserId: number,
+  ownerUserId: string,
   slug: string
 ): Promise<ReadingList> {
   const res = await fetch(

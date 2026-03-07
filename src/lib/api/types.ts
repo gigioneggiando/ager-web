@@ -47,7 +47,7 @@ export type ReadingListVisibility = 0 | 1 | 2;
 
 export type ReadingList = {
   id: number;
-  ownerUserId: number;
+  ownerUserId: string;
   name: string;
   slug: string;
   description?: string | null;

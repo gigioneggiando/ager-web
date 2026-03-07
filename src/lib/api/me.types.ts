@@ -1,6 +1,6 @@
 export type UserProfileDto = {
-  id?: number;            // tolerate either id or userId
-  userId?: number;
+  id?: string;            // tolerate either id or userId
+  userId?: string;
   email?: string;
   username: string;
   avatarUrl?: string | null;

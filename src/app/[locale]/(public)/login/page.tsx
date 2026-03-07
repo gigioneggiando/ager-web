@@ -15,9 +15,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Suspense, useEffect, useMemo, useState } from "react";
-import { toast } from "sonner";
-import { ApiError } from "@/lib/api/errors";
-import RestoreAccountDialog from "@/components/auth/RestoreAccountDialog";
+import { ApiError, getRetryAfterSeconds } from "@/lib/api/errors";
 import OAuthButtons from "@/components/auth/OAuthButtons";
 
 const REQUEST_SCHEMA = z.object({
@@ -54,21 +52,21 @@ function LoginPageInner() {
   const [errors, setErrors] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
-  const [restoreOpen, setRestoreOpen] = useState(false);
-  const [restoreEmail, setRestoreEmail] = useState<string>("");
   const [method, setMethod] = useState<"otp" | "password">("otp");
   const [step, setStep] = useState<"request" | "verify">("request");
   const [email, setEmail] = useState("");
   const [otpCode, setOtpCode] = useState("");
   const [password, setPassword] = useState("");
   const [resendAvailableAt, setResendAvailableAt] = useState<number | null>(null);
+  const [rateLimitUntil, setRateLimitUntil] = useState<number | null>(null);
   const [now, setNow] = useState<number>(() => Date.now());
 
   useEffect(() => {
-    if (step !== "verify" || !resendAvailableAt) return;
+    if (step !== "verify" && !rateLimitUntil) return;
+    if (step === "verify" && !resendAvailableAt && !rateLimitUntil) return;
     const t = setInterval(() => setNow(Date.now()), 250);
     return () => clearInterval(t);
-  }, [step, resendAvailableAt]);
+  }, [step, resendAvailableAt, rateLimitUntil]);
 
   const resendSecondsLeft = useMemo(() => {
     if (!resendAvailableAt) return 0;
@@ -76,6 +74,12 @@ function LoginPageInner() {
   }, [resendAvailableAt, now]);
 
   const canResend = step === "verify" && resendSecondsLeft === 0;
+  const rateLimitSecondsLeft = useMemo(() => {
+    if (!rateLimitUntil) return 0;
+    return Math.max(0, Math.ceil((rateLimitUntil - now) / 1000));
+  }, [rateLimitUntil, now]);
+
+  const isRateLimited = rateLimitSecondsLeft > 0;
 
   function resetOtpFlow() {
     setStep("request");
@@ -126,7 +130,9 @@ function LoginPageInner() {
     } catch (e: unknown) {
       const err = e as ApiError;
       if (err?.status === 429) {
-        setErrors(isIt ? "Troppi tentativi, riprova tra poco." : "Too many attempts, try again later.");
+        const retryAfter = getRetryAfterSeconds(err) ?? 60;
+        setRateLimitUntil(Date.now() + retryAfter * 1000);
+        setErrors(isIt ? `Troppi tentativi. Riprova tra ${retryAfter}s.` : `Too many attempts. Try again in ${retryAfter}s.`);
       } else {
         setErrors(err?.message ?? (isIt ? "Impossibile inviare il codice." : "Unable to send the code."));
       }
@@ -152,25 +158,12 @@ function LoginPageInner() {
     } catch (e: unknown) {
       const err = e as ApiError;
 
-      if (err?.status === 401) {
-        setErrors(isIt ? "Codice non valido o scaduto." : "Invalid or expired code.");
-      } else if (err?.status === 403) {
-        setErrors(isIt ? "Account disabilitato/eliminato." : "Account disabled/deleted.");
-
-        if (err?.code === "account_deleted") {
-          setRestoreEmail(email);
-          toast(isIt ? "Account eliminato" : "Account deleted", {
-            description: isIt
-              ? "Questo account è stato eliminato. Vuoi ripristinarlo?"
-              : "This account was deleted. Do you want to restore it?",
-            action: {
-              label: isIt ? "Ripristina" : "Restore",
-              onClick: () => setRestoreOpen(true),
-            },
-          });
-        }
-      } else if (err?.status === 404) {
-        setErrors(isIt ? "Account non trovato." : "Account not found.");
+      if (err?.status === 401 || err?.status === 403) {
+        setErrors(isIt ? "Credenziali non valide." : "Invalid credentials.");
+      } else if (err?.status === 429) {
+        const retryAfter = getRetryAfterSeconds(err) ?? 60;
+        setRateLimitUntil(Date.now() + retryAfter * 1000);
+        setErrors(isIt ? `Troppi tentativi. Riprova tra ${retryAfter}s.` : `Too many attempts. Try again in ${retryAfter}s.`);
       } else {
         setErrors(err?.message ?? (isIt ? "Impossibile effettuare il login." : "Unable to sign in."));
       }
@@ -193,7 +186,9 @@ function LoginPageInner() {
     } catch (e: unknown) {
       const err = e as ApiError;
       if (err?.status === 429) {
-        setErrors(isIt ? "Troppi tentativi, riprova tra poco." : "Too many attempts, try again later.");
+        const retryAfter = getRetryAfterSeconds(err) ?? 60;
+        setRateLimitUntil(Date.now() + retryAfter * 1000);
+        setErrors(isIt ? `Troppi tentativi. Riprova tra ${retryAfter}s.` : `Too many attempts. Try again in ${retryAfter}s.`);
       } else {
         setErrors(err?.message ?? (isIt ? "Impossibile inviare il codice." : "Unable to send the code."));
       }
@@ -222,25 +217,12 @@ function LoginPageInner() {
     } catch (e: unknown) {
       const err = e as ApiError;
 
-      if (err?.status === 401) {
+      if (err?.status === 401 || err?.status === 403) {
         setErrors(isIt ? "Credenziali non valide." : "Invalid credentials.");
-      } else if (err?.status === 403) {
-        setErrors(isIt ? "Account disabilitato/eliminato." : "Account disabled/deleted.");
-
-        if (err?.code === "account_deleted") {
-          setRestoreEmail(email);
-          toast(isIt ? "Account eliminato" : "Account deleted", {
-            description: isIt
-              ? "Questo account è stato eliminato. Vuoi ripristinarlo?"
-              : "This account was deleted. Do you want to restore it?",
-            action: {
-              label: isIt ? "Ripristina" : "Restore",
-              onClick: () => setRestoreOpen(true),
-            },
-          });
-        }
-      } else if (err?.status === 404) {
-        setErrors(isIt ? "Account non trovato." : "Account not found.");
+      } else if (err?.status === 429) {
+        const retryAfter = getRetryAfterSeconds(err) ?? 60;
+        setRateLimitUntil(Date.now() + retryAfter * 1000);
+        setErrors(isIt ? `Troppi tentativi. Riprova tra ${retryAfter}s.` : `Too many attempts. Try again in ${retryAfter}s.`);
       } else {
         setErrors(err?.message ?? (isIt ? "Impossibile effettuare il login." : "Unable to sign in."));
       }
@@ -301,8 +283,13 @@ function LoginPageInner() {
                   />
                 </div>
                 {info && <p className="text-sm text-muted-foreground">{info}</p>}
+                {isRateLimited && (
+                  <p className="text-sm text-muted-foreground">
+                    {isIt ? `Attendi ${rateLimitSecondsLeft}s prima di riprovare.` : `Wait ${rateLimitSecondsLeft}s before retrying.`}
+                  </p>
+                )}
                 {errors && <p className="text-sm text-destructive">{errors}</p>}
-                <Button type="submit" disabled={pending} className="w-full">
+                <Button type="submit" disabled={pending || isRateLimited} className="w-full">
                   {pending
                     ? isIt
                       ? "Accesso..."
@@ -341,8 +328,13 @@ function LoginPageInner() {
                   />
                 </div>
                 {info && <p className="text-sm text-muted-foreground">{info}</p>}
+                {isRateLimited && (
+                  <p className="text-sm text-muted-foreground">
+                    {isIt ? `Attendi ${rateLimitSecondsLeft}s prima di riprovare.` : `Wait ${rateLimitSecondsLeft}s before retrying.`}
+                  </p>
+                )}
                 {errors && <p className="text-sm text-destructive">{errors}</p>}
-                <Button type="submit" disabled={pending} className="w-full">
+                <Button type="submit" disabled={pending || isRateLimited} className="w-full">
                   {pending
                     ? isIt
                       ? "Invio..."
@@ -385,9 +377,14 @@ function LoginPageInner() {
                   />
                 </div>
                 {info && <p className="text-sm text-muted-foreground">{info}</p>}
+                {isRateLimited && (
+                  <p className="text-sm text-muted-foreground">
+                    {isIt ? `Attendi ${rateLimitSecondsLeft}s prima di riprovare.` : `Wait ${rateLimitSecondsLeft}s before retrying.`}
+                  </p>
+                )}
                 {errors && <p className="text-sm text-destructive">{errors}</p>}
                 <div className="flex gap-2">
-                  <Button type="submit" disabled={pending} className="flex-1">
+                  <Button type="submit" disabled={pending || isRateLimited} className="flex-1">
                     {pending
                       ? isIt
                         ? "Verifica..."
@@ -399,7 +396,7 @@ function LoginPageInner() {
                   <Button
                     type="button"
                     variant="secondary"
-                    disabled={pending || !canResend}
+                    disabled={pending || isRateLimited || !canResend}
                     onClick={onResend}
                     className="flex-1"
                   >
@@ -463,12 +460,6 @@ function LoginPageInner() {
           </CardContent>
         </Card>
 
-        <RestoreAccountDialog
-          open={restoreOpen}
-          onOpenChange={setRestoreOpen}
-          locale={locale}
-          email={restoreEmail}
-        />
       </div>
     </main>
   );

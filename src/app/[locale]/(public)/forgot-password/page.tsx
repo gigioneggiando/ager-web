@@ -7,7 +7,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { ApiError, getProblemDetailsFieldErrors } from "@/lib/api/errors";
+import { ApiError, getProblemDetailsFieldErrors, getRetryAfterSeconds } from "@/lib/api/errors";
 import { getPasswordRuleIssues, PasswordSchema } from "@/lib/validation/password";
 import { requestPasswordResetOtp, resetPassword } from "@/lib/api/auth";
 
@@ -66,6 +66,8 @@ export default function ForgotPasswordPage() {
   const [info, setInfo] = useState<string | null>(null);
   const [errors, setErrors] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string[]>>({});
+  const [rateLimitUntil, setRateLimitUntil] = useState<number | null>(null);
+  const [now, setNow] = useState<number>(() => Date.now());
 
   const [email, setEmail] = useState("");
   const [otpCode, setOtpCode] = useState("");
@@ -77,6 +79,19 @@ export default function ForgotPasswordPage() {
     setErrors(null);
     setFieldErrors({});
   }
+
+  useEffect(() => {
+    if (!rateLimitUntil) return;
+    const t = setInterval(() => setNow(Date.now()), 250);
+    return () => clearInterval(t);
+  }, [rateLimitUntil]);
+
+  const rateLimitSecondsLeft = useMemo(() => {
+    if (!rateLimitUntil) return 0;
+    return Math.max(0, Math.ceil((rateLimitUntil - now) / 1000));
+  }, [rateLimitUntil, now]);
+
+  const isRateLimited = rateLimitSecondsLeft > 0;
 
   useEffect(() => {
     // Clear field errors when switching steps
@@ -109,7 +124,9 @@ export default function ForgotPasswordPage() {
     } catch (e: unknown) {
       const err = e as ApiError;
       if (err?.status === 429) {
-        setErrors(isIt ? "Troppi tentativi, riprova tra poco." : "Too many attempts, try again later.");
+        const retryAfter = getRetryAfterSeconds(err) ?? 60;
+        setRateLimitUntil(Date.now() + retryAfter * 1000);
+        setErrors(isIt ? `Troppi tentativi. Riprova tra ${retryAfter}s.` : `Too many attempts. Try again in ${retryAfter}s.`);
       } else {
         setErrors(err?.message ?? (isIt ? "Impossibile inviare il codice." : "Unable to send the code."));
       }
@@ -159,6 +176,10 @@ export default function ForgotPasswordPage() {
         setErrors(isIt ? "Codice non valido o scaduto." : "Invalid or expired code.");
       } else if (err?.status === 403) {
         setErrors(isIt ? "Account disabilitato/eliminato." : "Account disabled/deleted.");
+      } else if (err?.status === 429) {
+        const retryAfter = getRetryAfterSeconds(err) ?? 60;
+        setRateLimitUntil(Date.now() + retryAfter * 1000);
+        setErrors(isIt ? `Troppi tentativi. Riprova tra ${retryAfter}s.` : `Too many attempts. Try again in ${retryAfter}s.`);
       } else if (err?.status === 422) {
         const fe = getProblemDetailsFieldErrors(err.details);
         setFieldErrors(fe);
@@ -199,9 +220,14 @@ export default function ForgotPasswordPage() {
           </div>
 
           {info && <p className="text-sm text-muted-foreground">{info}</p>}
+          {isRateLimited && (
+            <p className="text-sm text-muted-foreground">
+              {isIt ? `Attendi ${rateLimitSecondsLeft}s prima di riprovare.` : `Wait ${rateLimitSecondsLeft}s before retrying.`}
+            </p>
+          )}
           {errors && <p className="text-sm text-destructive">{errors}</p>}
 
-          <Button type="submit" disabled={pending}>
+          <Button type="submit" disabled={pending || isRateLimited}>
             {pending
               ? isIt
                 ? "Invio..."
@@ -272,9 +298,14 @@ export default function ForgotPasswordPage() {
           </div>
 
           {info && <p className="text-sm text-muted-foreground">{info}</p>}
+          {isRateLimited && (
+            <p className="text-sm text-muted-foreground">
+              {isIt ? `Attendi ${rateLimitSecondsLeft}s prima di riprovare.` : `Wait ${rateLimitSecondsLeft}s before retrying.`}
+            </p>
+          )}
           {errors && <p className="text-sm text-destructive">{errors}</p>}
 
-          <Button type="submit" disabled={pending}>
+          <Button type="submit" disabled={pending || isRateLimited}>
             {pending
               ? isIt
                 ? "Aggiornamento..."
