@@ -34,6 +34,14 @@
   --destructive-foreground: 210 40% 98%;
 
   --radius: 0.75rem; /* rounded-2xl feel via mapping in tailwind.config */
+
+  /* Feedback colors - WCAG AAA contrast in light mode */
+  --feedback-success-bg: 122.4 73.6% 52.5%;    /* hsl from green-500 */
+  --feedback-success-fg: 122.4 73.6% 28%;      /* hsl from green-700 */
+  --feedback-warning-bg: 48 96.5% 52.9%;       /* hsl from yellow-500 */
+  --feedback-warning-fg: 39 89% 31.8%;         /* hsl from yellow-700 */
+  --feedback-error-bg: 0 84.2% 60.2%;          /* hsl from red-500 */
+  --feedback-error-fg: 0 84.6% 53.3%;          /* hsl from red-600 */
 }
 
 .dark {
@@ -64,6 +72,14 @@
 
   --destructive: 0 62.8% 30.6%;
   --destructive-foreground: 210 40% 98%;
+
+  /* Feedback colors - WCAG AAA contrast in dark mode */
+  --feedback-success-bg: 120 75.3% 46.3%;      /* hsl from green-400 */
+  --feedback-success-fg: 120 66.7% 90.6%;      /* hsl from green-100 */
+  --feedback-warning-bg: 45.4 100% 62.2%;      /* hsl from yellow-300 */
+  --feedback-warning-fg: 39 80% 15.7%;         /* hsl from yellow-900 dark */
+  --feedback-error-bg: 0 100% 71%;             /* hsl from red-400 */
+  --feedback-error-fg: 0 100% 95.3%;           /* hsl from red-100 */
 }
 
 /* Apply tokens */

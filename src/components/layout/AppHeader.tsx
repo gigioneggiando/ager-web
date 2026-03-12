@@ -3,6 +3,7 @@
 import { Bell, CircleUser, Settings } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
+import ThemeToggle from "@/components/layout/ThemeToggle";
 import HeaderSearch from "@/components/search/HeaderSearch";
 import {
   DropdownMenu,
@@ -58,6 +59,15 @@ export default function AppHeader() {
       </div>
 
       <div className="ml-auto flex items-center gap-2 md:ml-0">
+        <ThemeToggle
+          labels={{
+            theme: t("theme"),
+            system: t("themeSystem"),
+            light: t("themeLight"),
+            dark: t("themeDark"),
+          }}
+        />
+
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="icon" aria-label={t("menuAriaLabel")}>
