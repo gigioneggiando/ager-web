@@ -163,7 +163,7 @@ describe("Optimistic Interactions", () => {
       vi.advanceTimersByTime(2000);
 
       // User clicks like again (creates new schedule)
-      const undo2 = manager.scheduleAction(1, "LIKE", 3000, commitSpy);
+      manager.scheduleAction(1, "LIKE", 3000, commitSpy);
 
       // Timer should reset, so original 3s hasn't passed
       vi.advanceTimersByTime(999);

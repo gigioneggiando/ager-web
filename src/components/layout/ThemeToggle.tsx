@@ -31,23 +31,16 @@ export default function ThemeToggle({ labels }: { labels: ThemeToggleLabels }) {
 
   const activeTheme = mounted ? resolvedTheme ?? theme ?? "system" : "system";
 
-  function ThemeIcon() {
-    if (activeTheme === "dark") {
-      return <Moon className="h-4 w-4" />;
-    }
-
-    if (activeTheme === "light") {
-      return <Sun className="h-4 w-4" />;
-    }
-
-    return <LaptopMinimal className="h-4 w-4" />;
-  }
+  const themeIcon =
+    activeTheme === "dark" ? <Moon className="h-4 w-4" /> :
+    activeTheme === "light" ? <Sun className="h-4 w-4" /> :
+    <LaptopMinimal className="h-4 w-4" />;
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" size="icon" aria-label={labels.theme} title={labels.theme}>
-          <ThemeIcon />
+          {themeIcon}
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
