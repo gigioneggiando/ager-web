@@ -74,21 +74,48 @@ export const PhilosophyPage = ({ locale, content: propContent }: PhilosophyPageP
       {/* Navigation Bar with Section Tags */}
       <nav className="sticky top-0 z-50 bg-background/95 backdrop-blur-sm border-b">
         <div className="max-w-6xl mx-auto px-6">
-          <div className="flex items-center justify-center gap-2 md:gap-4 py-4 overflow-x-auto">
-            {content.nav.map((item) => (
-              <a
-                key={item.id}
-                href={`#${item.id}`}
-                className={cn(
-                  "px-3 md:px-4 py-1.5 text-xs md:text-sm font-medium rounded-full transition-all whitespace-nowrap",
-                  activeSection === item.id
-                    ? "bg-primary text-primary-foreground"
-                    : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
-                )}
-              >
-                {item.label}
-              </a>
-            ))}
+          <div className="flex items-center gap-4 py-4">
+            <Link
+              href={`/${locale}`}
+              className="flex shrink-0 items-center gap-2 text-lg font-semibold tracking-tight"
+            >
+              <span className="inline-flex h-8 w-8 items-center justify-center rounded-md bg-muted text-foreground">
+                <Image
+                  src="/favicon.ico"
+                  alt="Ager"
+                  width={18}
+                  height={18}
+                  className="h-[18px] w-[18px] object-contain"
+                  priority
+                />
+              </span>
+              <span>Ager</span>
+            </Link>
+
+            <div className="flex min-w-0 flex-1 items-center justify-center overflow-x-auto">
+              <div className="flex items-center gap-2 md:gap-4">
+                {content.nav.map((item) => (
+                  <a
+                    key={item.id}
+                    href={`#${item.id}`}
+                    className={cn(
+                      "px-3 md:px-4 py-1.5 text-xs md:text-sm font-medium rounded-full transition-all whitespace-nowrap",
+                      activeSection === item.id
+                        ? "bg-primary text-primary-foreground"
+                        : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                    )}
+                  >
+                    {item.label}
+                  </a>
+                ))}
+              </div>
+            </div>
+
+            <div className="hidden shrink-0 sm:flex">
+              <Button asChild variant="secondary">
+                <Link href={`/${locale}/feed`}>{content.hero.ctaPrimary}</Link>
+              </Button>
+            </div>
           </div>
         </div>
       </nav>
@@ -292,7 +319,7 @@ export const PhilosophyPage = ({ locale, content: propContent }: PhilosophyPageP
         <div className="mx-auto max-w-3xl" style={{ marginTop: '1rem', paddingTop: '2rem' }}>
           <div className="flex justify-center">
             <Button size="lg" asChild>
-              <Link href="/register">Inizia ora</Link>
+              <Link href="/register">{content.footerCta.button}</Link>
             </Button>
           </div>
         </div>
@@ -428,7 +455,11 @@ export const PhilosophyPage = ({ locale, content: propContent }: PhilosophyPageP
               </div>
 
               <div className="flex flex-col gap-2 text-sm sm:items-end">
-                <div className="text-muted-foreground">© 2025 Ager — Tutti i diritti riservati</div>
+                <div className="text-muted-foreground">
+                  {locale === 'it'
+                    ? '© 2025 Ager — Tutti i diritti riservati'
+                    : '© 2025 Ager — All rights reserved'}
+                </div>
                 <div className="text-muted-foreground">
                   <a className="hover:text-foreground" href="mailto:ager.org@gmail.com">
                     {locale === 'it' ? "Contatti" : "Contact"}

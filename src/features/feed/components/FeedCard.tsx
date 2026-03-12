@@ -1,9 +1,9 @@
 "use client";
 
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { useParams } from "next/navigation";
 import { Bookmark, Heart, Share2, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useInteract } from "@/features/interactions/useInteract";
@@ -13,6 +13,7 @@ import { toast } from "sonner";
 import { useSession } from "@/lib/auth/session";
 import ResilientImage from "@/components/media/ResilientImage";
 import { normalizeImageUrl } from "@/lib/images/normalize";
+import { useAppLocale } from "@/i18n/useAppLocale";
 
 function timeAgo(iso: string, locale: string) {
   const d = new Date(iso);
@@ -51,6 +52,8 @@ export type FeedCardProps = {
 };
 
 export default function FeedCard(props: FeedCardProps) {
+  const tResultRow = useTranslations("search.resultRow");
+  const tFeedCard = useTranslations("feed.card");
   const {
     articleId,
     title,
@@ -63,8 +66,7 @@ export default function FeedCard(props: FeedCardProps) {
     estimatedReadingMinutes,
   } = props;
 
-  const { locale } = useParams() as { locale?: "it" | "en" };
-  const isIt = locale !== "en";
+  const { locale } = useAppLocale();
   const rel = timeAgo(publishedAt, locale ?? "it");
   const normalizedImageUrl = normalizeImageUrl(imageUrl, url);
   const hasImage = !!normalizedImageUrl;
@@ -91,7 +93,7 @@ export default function FeedCard(props: FeedCardProps) {
 
       if (nav?.clipboard?.writeText) {
         await nav.clipboard.writeText(url);
-        toast(locale === "it" ? "Link copiato" : "Link copied");
+        toast(tFeedCard("linkCopied"));
         return;
       }
 
@@ -102,9 +104,9 @@ export default function FeedCard(props: FeedCardProps) {
       el.select();
       document.execCommand("copy");
       document.body.removeChild(el);
-      toast(locale === "it" ? "Link copiato" : "Link copied");
+      toast(tFeedCard("linkCopied"));
     } catch {
-      toast(locale === "it" ? "Impossibile condividere" : "Unable to share");
+      toast(tFeedCard("shareFailed"));
     }
   }
 
@@ -157,7 +159,7 @@ export default function FeedCard(props: FeedCardProps) {
                 >
                   <Link
                     href={`/${locale}/search?q=${encodeURIComponent(t)}&page=1&pageSize=20`}
-                    aria-label={isIt ? `Cerca: ${t}` : `Search: ${t}`}
+                    aria-label={tFeedCard("topicSearchAriaLabel", { topic: t })}
                   >
                     {t}
                   </Link>
@@ -174,11 +176,11 @@ export default function FeedCard(props: FeedCardProps) {
               className="gap-2"
               onClick={() => like(articleId)}
               disabled={!accessToken}
-              aria-label={isIt ? "Mi piace" : "Like"}
-              title={isIt ? "Mi piace" : "Like"}
+              aria-label={tResultRow("like")}
+              title={tResultRow("like")}
             >
               <Heart className="h-4 w-4" />
-              <span className="hidden sm:inline">{isIt ? "Mi piace" : "Like"}</span>
+              <span className="hidden sm:inline">{tResultRow("like")}</span>
             </Button>
 
             {/* Open the AddToListDialog */}
@@ -187,11 +189,11 @@ export default function FeedCard(props: FeedCardProps) {
               variant="secondary"
               className="gap-2"
               onClick={() => setAddOpen(true)}
-              aria-label={isIt ? "Salva in…" : "Save to…"}
-              title={isIt ? "Salva in…" : "Save to…"}
+              aria-label={tResultRow("saveTo")}
+              title={tResultRow("saveTo")}
             >
               <Bookmark className="h-4 w-4" />
-              <span className="hidden sm:inline">{isIt ? "Salva in…" : "Save to…"}</span>
+              <span className="hidden sm:inline">{tResultRow("saveTo")}</span>
             </Button>
 
             <Button
@@ -202,11 +204,11 @@ export default function FeedCard(props: FeedCardProps) {
                 const shareUrl = window.location.origin + detailHref;
                 await shareOrCopy({ title, url: shareUrl });
               }}
-              aria-label={isIt ? "Condividi" : "Share"}
-              title={isIt ? "Condividi" : "Share"}
+              aria-label={tResultRow("share")}
+              title={tResultRow("share")}
             >
               <Share2 className="h-4 w-4" />
-              <span className="hidden sm:inline">{isIt ? "Condividi" : "Share"}</span>
+              <span className="hidden sm:inline">{tResultRow("share")}</span>
             </Button>
 
             <Button
@@ -214,11 +216,11 @@ export default function FeedCard(props: FeedCardProps) {
               variant="ghost"
               className="ml-auto text-muted-foreground hover:text-foreground"
               onClick={() => hide(articleId)}
-              aria-label={isIt ? "Nascondi" : "Hide"}
-              title={isIt ? "Non mi interessa" : "Not interested"}
+              aria-label={tResultRow("hide")}
+              title={tResultRow("notInterested")}
             >
               <EyeOff className="h-4 w-4" />
-              <span className="hidden sm:inline">{isIt ? "Nascondi" : "Hide"}</span>
+              <span className="hidden sm:inline">{tResultRow("hide")}</span>
             </Button>
           </div>
         </div>

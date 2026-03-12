@@ -19,6 +19,31 @@ import {
 } from "@/lib/api/readingLists";
 import type { ReadingListItem, ReadingList } from "@/lib/api/types";
 
+const listQueryKeys = {
+  root: () => ["lists"] as const,
+  all: () => ["lists", "all"] as const,
+  mine: (limit: number) => ["lists", "mine", limit] as const,
+  itemsSingle: (listId: number) => ["lists", listId, "items", "single"] as const,
+  items: (listId: number) => ["lists", listId, "items"] as const,
+};
+
+function invalidateListQueries(queryClient: ReturnType<typeof useQueryClient>, listId?: number) {
+  if (typeof listId === "number") {
+    queryClient.invalidateQueries({ queryKey: listQueryKeys.items(listId) });
+  }
+
+  queryClient.invalidateQueries({ queryKey: listQueryKeys.root() });
+  queryClient.invalidateQueries({ queryKey: listQueryKeys.all() });
+}
+
+function requireAccessToken(accessToken: string | null): string {
+  if (!accessToken) {
+    throw new Error("Not authenticated");
+  }
+
+  return accessToken;
+}
+
 /**
  * Non-paged lists, used e.g. in AddToListDialog.
  * (Internally we just fetch one big page.)
@@ -27,7 +52,7 @@ export function useMyLists() {
   const { accessToken } = useSession();
 
   return useQuery<ReadingList[]>({
-    queryKey: ["lists", "all"],
+    queryKey: listQueryKeys.all(),
     enabled: !!accessToken,
     queryFn: async () => {
       if (!accessToken) return [];
@@ -46,7 +71,7 @@ export function useMyListsInfinite(limit = 20) {
   const { accessToken } = useSession();
 
   return useInfiniteQuery<ReadingListPage, Error>({
-    queryKey: ["lists", "mine", limit],
+    queryKey: listQueryKeys.mine(limit),
     enabled: !!accessToken,
     initialPageParam: null as string | null,
     queryFn: async ({ pageParam }) => {
@@ -71,7 +96,7 @@ export function useListItems(listId: number) {
   const { accessToken } = useSession();
 
   return useQuery<ReadingListItem[]>({
-    queryKey: ["lists", listId, "items", "single"],
+    queryKey: listQueryKeys.itemsSingle(listId),
     enabled: !!accessToken && !!listId,
     queryFn: async () => {
       if (!accessToken) return [];
@@ -95,7 +120,7 @@ export function useListItemsInfinite(listId: number, limit = 20) {
   const { accessToken } = useSession();
 
   return useInfiniteQuery<ReadingListItemsPage, Error>({
-    queryKey: ["lists", listId, "items"],
+    queryKey: listQueryKeys.items(listId),
     enabled: !!accessToken && !!listId,
     initialPageParam: null as string | null,
     queryFn: async ({ pageParam }) => {
@@ -129,7 +154,7 @@ export function useCreateList() {
       description?: string | null;
       isPublic?: boolean;
     }) => {
-      if (!accessToken) throw new Error("Not authenticated");
+      const token = requireAccessToken(accessToken);
 
       // 0 = Private, 2 = Public
       const visibility: 0 | 2 = body.isPublic ? 2 : 0;
@@ -141,15 +166,11 @@ export function useCreateList() {
           visibility,
           allowCollaboration: false,
         },
-        accessToken
+        token
       );
     },
     onSuccess: () => {
-      // Refresh list summaries everywhere (Lists page + dialogs).
-      // Partial key invalidation intentionally matches:
-      // - ["lists", "mine", ...]
-      // - ["lists", "all"]
-      qc.invalidateQueries({ queryKey: ["lists"] });
+      invalidateListQueries(qc);
     },
   });
 }
@@ -168,21 +189,18 @@ export function useAddToList() {
       articleId: number;
       note?: string;
     }) => {
-      if (!accessToken) throw new Error("Not authenticated");
+      const token = requireAccessToken(accessToken);
       await addItemToReadingList(
         args.readingListId,
         {
           articleId: args.articleId,
           note: args.note,
         },
-        accessToken
+        token
       );
     },
     onSuccess: (_data, vars) => {
-      // refresh that list’s items + list summaries
-      qc.invalidateQueries({ queryKey: ["lists", vars.readingListId, "items"] });
-      qc.invalidateQueries({ queryKey: ["lists"] });
-      qc.invalidateQueries({ queryKey: ["lists", "all"] });
+      invalidateListQueries(qc, vars.readingListId);
     },
   });
 }
@@ -196,13 +214,10 @@ export function useRemoveFromList(readingListId: number) {
 
   return useMutation({
     mutationFn: async (articleId: number) => {
-      if (!accessToken) throw new Error("Not authenticated");
-      await removeItemFromReadingList(readingListId, articleId, accessToken);
+      await removeItemFromReadingList(readingListId, articleId, requireAccessToken(accessToken));
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["lists", readingListId, "items"] });
-      qc.invalidateQueries({ queryKey: ["lists"] });
-      qc.invalidateQueries({ queryKey: ["lists", "all"] });
+      invalidateListQueries(qc, readingListId);
     },
   });
 }
@@ -216,12 +231,10 @@ export function useDeleteList() {
 
   return useMutation({
     mutationFn: async (listId: number) => {
-      if (!accessToken) throw new Error("Not authenticated");
-      await deleteReadingList(listId, accessToken);
+      await deleteReadingList(listId, requireAccessToken(accessToken));
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["lists"] });
-      qc.invalidateQueries({ queryKey: ["lists", "all"] });
+      invalidateListQueries(qc);
     },
   });
 }

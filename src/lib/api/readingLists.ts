@@ -1,27 +1,28 @@
 // src/lib/api/readingLists.ts
+import { requestJson, requestVoid } from "@/lib/api/request";
 import type {
   ReadingList,
-  ReadingListItem,
+  ReadingListItemsPage,
+  ReadingListPage,
   ReadingListVisibility,
 } from "./types";
 
-// Always return a simple record so TS is happy with fetch headers
-function authHeaders(accessToken?: string): Record<string, string> {
-  if (!accessToken) return {};
-  return { Authorization: `Bearer ${accessToken}` };
+export type { ReadingListPage, ReadingListItemsPage };
+
+function buildPageQuery(limit: number, cursor: string | null, expand?: string): string {
+  const params = new URLSearchParams();
+  params.set("limit", String(limit));
+
+  if (expand) {
+    params.set("expand", expand);
+  }
+
+  if (cursor) {
+    params.set("cursor", cursor);
+  }
+
+  return params.toString();
 }
-
-// ---------- EXPORTED PAGE TYPES ----------
-
-export type ReadingListPage = {
-  items: ReadingList[];
-  nextCursor: string | null;
-};
-
-export type ReadingListItemsPage = {
-  items: ReadingListItem[];
-  nextCursor: string | null;
-};
 
 // ---------- CREATE LIST ----------
 
@@ -36,21 +37,11 @@ export async function createReadingList(
   body: CreateReadingListPayload,
   accessToken: string
 ): Promise<{ id: number }> {
-  const res = await fetch(`/api/reading-lists`, {
+  return requestJson<{ id: number }>(`/api/reading-lists`, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      ...authHeaders(accessToken),
-    },
-    body: JSON.stringify(body),
+    body,
+    accessToken,
   });
-
-  if (!res.ok) {
-    const text = await res.text().catch(() => "");
-    throw new Error(text || `POST /api/reading-lists failed: ${res.status}`);
-  }
-
-  return res.json();
 }
 
 // ---------- DELETE LIST ----------
@@ -59,19 +50,10 @@ export async function deleteReadingList(
   readingListId: number,
   accessToken: string
 ): Promise<void> {
-  const res = await fetch(`/api/reading-lists/${readingListId}`, {
+  await requestVoid(`/api/reading-lists/${readingListId}`, {
     method: "DELETE",
-    headers: {
-      ...authHeaders(accessToken),
-    },
+    accessToken,
   });
-
-  if (!res.ok && res.status !== 204) {
-    const text = await res.text().catch(() => "");
-    throw new Error(
-      text || `DELETE /api/reading-lists/${readingListId} failed: ${res.status}`
-    );
-  }
 }
 
 // ---------- "MY" LISTS (AUTH) ----------
@@ -82,33 +64,13 @@ export async function getMyReadingListsPage(
   cursor: string | null,
   limit: number
 ): Promise<ReadingListPage> {
-  const params = new URLSearchParams();
-  params.set("limit", String(limit));
-  if (cursor) params.set("cursor", cursor);
-
-  const res = await fetch(
-    `/api/reading-lists/mine?${params.toString()}`,
+  return requestJson<ReadingListPage>(
+    `/api/reading-lists/mine?${buildPageQuery(limit, cursor)}`,
     {
       method: "GET",
-      headers: {
-        Accept: "application/json",
-        ...authHeaders(accessToken),
-      },
+      accessToken,
     }
   );
-
-  if (!res.ok) {
-    const text = await res.text().catch(() => "");
-    throw new Error(
-      text || `GET /api/reading-lists/mine failed: ${res.status}`
-    );
-  }
-
-  const data = await res.json();
-  return {
-    items: data.items as ReadingList[],
-    nextCursor: (data.nextCursor ?? null) as string | null,
-  };
 }
 
 // ---------- ADD ITEM TO LIST (AUTH) ----------
@@ -124,25 +86,11 @@ export async function addItemToReadingList(
   body: AddItemPayload,
   accessToken: string
 ): Promise<void> {
-  const res = await fetch(
-    `/api/reading-lists/${readingListId}/items`,
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        ...authHeaders(accessToken),
-      },
-      body: JSON.stringify(body),
-    }
-  );
-
-  if (!res.ok && res.status !== 201) {
-    const text = await res.text().catch(() => "");
-    throw new Error(
-      text ||
-        `POST /api/reading-lists/${readingListId}/items failed: ${res.status}`
-    );
-  }
+  await requestVoid(`/api/reading-lists/${readingListId}/items`, {
+    method: "POST",
+    body,
+    accessToken,
+  });
 }
 
 // ---------- REMOVE ITEM FROM LIST (AUTH) ----------
@@ -153,24 +101,10 @@ export async function removeItemFromReadingList(
   articleId: number,
   accessToken: string
 ): Promise<void> {
-  const headers: Record<string, string> = {
-    Authorization: `Bearer ${accessToken}`,
-  };
-
-  const res = await fetch(
-    `/api/reading-lists/${readingListId}/items/${articleId}`,
-    {
-      method: "DELETE",
-      headers,
-    }
-  );
-
-  if (!res.ok) {
-    const text = await res.text().catch(() => "");
-    throw new Error(
-      text || `DELETE /api/reading-lists/${readingListId}/items/${articleId} failed: ${res.status}`
-    );
-  }
+  await requestVoid(`/api/reading-lists/${readingListId}/items/${articleId}`, {
+    method: "DELETE",
+    accessToken,
+  });
 }
 
 
@@ -183,35 +117,13 @@ export async function getReadingListItemsPage(
   cursor: string | null,
   limit: number
 ): Promise<ReadingListItemsPage> {
-  const params = new URLSearchParams();
-  params.set("limit", String(limit));
-  params.set("expand", "article");
-  if (cursor) params.set("cursor", cursor);
-
-  const res = await fetch(
-    `/api/reading-lists/${readingListId}/items?${params.toString()}`,
+  return requestJson<ReadingListItemsPage>(
+    `/api/reading-lists/${readingListId}/items?${buildPageQuery(limit, cursor, "article")}`,
     {
       method: "GET",
-      headers: {
-        Accept: "application/json",
-        ...authHeaders(accessToken),
-      },
+      accessToken,
     }
   );
-
-  if (!res.ok) {
-    const text = await res.text().catch(() => "");
-    throw new Error(
-      text ||
-        `GET /api/reading-lists/${readingListId}/items failed: ${res.status}`
-    );
-  }
-
-  const data = await res.json();
-  return {
-    items: data.items as ReadingListItem[],
-    nextCursor: (data.nextCursor ?? null) as string | null,
-  };
 }
 
 // ---------- PUBLIC METADATA ----------
@@ -221,25 +133,12 @@ export async function getPublicReadingList(
   ownerUserId: string,
   slug: string
 ): Promise<ReadingList> {
-  const res = await fetch(
-    `/api/reading-lists/public/users/${ownerUserId}/${encodeURIComponent(
-      slug
-    )}`,
+  return requestJson<ReadingList>(
+    `/api/reading-lists/public/users/${ownerUserId}/${encodeURIComponent(slug)}`,
     {
       method: "GET",
-      headers: { Accept: "application/json" },
     }
   );
-
-  if (!res.ok) {
-    const text = await res.text().catch(() => "");
-    throw new Error(
-      text ||
-        `GET /api/reading-lists/public/users/${ownerUserId}/${slug} failed: ${res.status}`
-    );
-  }
-
-  return (await res.json()) as ReadingList;
 }
 
 // ---------- PUBLIC ITEMS ----------
@@ -250,29 +149,10 @@ export async function getPublicReadingListItemsPage(
   cursor: string | null,
   limit: number
 ): Promise<ReadingListItemsPage> {
-  const params = new URLSearchParams();
-  params.set("limit", String(limit));
-  if (cursor) params.set("cursor", cursor);
-
-  const res = await fetch(
-    `/api/reading-lists/public/${readingListId}/items?${params.toString()}`,
+  return requestJson<ReadingListItemsPage>(
+    `/api/reading-lists/public/${readingListId}/items?${buildPageQuery(limit, cursor)}`,
     {
       method: "GET",
-      headers: { Accept: "application/json" },
     }
   );
-
-  if (!res.ok) {
-    const text = await res.text().catch(() => "");
-    throw new Error(
-      text ||
-        `GET /api/reading-lists/public/${readingListId}/items failed: ${res.status}`
-    );
-  }
-
-  const data = await res.json();
-  return {
-    items: data.items as ReadingListItem[],
-    nextCursor: (data.nextCursor ?? null) as string | null,
-  };
 }

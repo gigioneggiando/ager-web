@@ -358,7 +358,7 @@ export const philosophyContent: Record<PhilosophyLang, PhilosophyContent> = {
       title: "Vuoi contribuire a una cultura dell'informazione più solida?",
       body:
         "Se ti interessa un modo più ordinato e verificabile di leggere e confrontare le fonti, puoi iniziare da qui.",
-      button: "Inizia"
+      button: "Inizia ora"
     }
   },
   en: {
@@ -627,7 +627,7 @@ export const philosophyContent: Record<PhilosophyLang, PhilosophyContent> = {
       title: "Interested in a more reliable way to read and compare sources?",
       body:
         "If you value orderly, verifiable reading and cross-source context, you can start here.",
-      button: "Get started"
+      button: "Start now"
     }
   }
 };

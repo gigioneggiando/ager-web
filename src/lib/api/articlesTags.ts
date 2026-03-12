@@ -1,5 +1,5 @@
-import { parseApiError } from "@/lib/api/errors";
 import { enrichSearchItemsWithSourceUrl, type ArticleSearchResponse } from "@/lib/api/articlesSearch";
+import { requestJson } from "@/lib/api/request";
 
 export type ArticleTagDto = {
   slug: string;
@@ -8,13 +8,10 @@ export type ArticleTagDto = {
 };
 
 export async function getTags(): Promise<ArticleTagDto[]> {
-  const res = await fetch("/api/articles/tags", {
+  return requestJson<ArticleTagDto[]>("/api/articles/tags", {
     method: "GET",
     cache: "no-store",
   });
-
-  if (!res.ok) throw await parseApiError(res);
-  return (await res.json()) as ArticleTagDto[];
 }
 
 export async function searchByTag(args: {
@@ -34,13 +31,11 @@ export async function searchByTag(args: {
   url.searchParams.set("page", String(page));
   url.searchParams.set("pageSize", String(pageSize));
 
-  const res = await fetch(url.toString(), {
+  const data = await requestJson<ArticleSearchResponse>(url.toString(), {
     method: "GET",
     cache: "no-store",
   });
 
-  if (!res.ok) throw await parseApiError(res);
-  const data = (await res.json()) as ArticleSearchResponse;
   return {
     ...data,
     items: await enrichSearchItemsWithSourceUrl(data.items),

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { getTranslations } from "next-intl/server";
 import { getArticlePublic } from "@/lib/api/articles";
 import ArticleActions from "./ArticleActions";
 import ResilientImage from "@/components/media/ResilientImage";
@@ -11,6 +12,7 @@ export default async function ArticleDetailPage({
   params: Promise<{ locale: "it" | "en"; id: string }>;
 }) {
   const { locale, id } = await params;
+  const t = await getTranslations({ locale, namespace: "articleDetail" });
   const articleId = Number(id);
   if (!Number.isFinite(articleId)) notFound();
 
@@ -27,13 +29,9 @@ export default async function ArticleDetailPage({
   const primaryLang = rawLang ? rawLang.split(/[-_]/)[0].toLowerCase() : "";
   const languageLabel =
     primaryLang === "it"
-      ? locale === "it"
-        ? "Italiano"
-        : "Italian"
+      ? t("languageNames.it")
       : primaryLang === "en"
-        ? locale === "it"
-          ? "Inglese"
-          : "English"
+        ? t("languageNames.en")
         : rawLang
           ? rawLang.toUpperCase()
           : null;
@@ -42,7 +40,7 @@ export default async function ArticleDetailPage({
     <div className="mx-auto w-full max-w-3xl px-4 py-6">
       <div className="mb-3 text-sm text-muted-foreground">
         <Link href={`/${locale}/search`} className="hover:underline">
-          ← {locale === "it" ? "Torna alla ricerca" : "Back to search"}
+          ← {t("backToSearch")}
         </Link>
       </div>
 
@@ -61,7 +59,7 @@ export default async function ArticleDetailPage({
           <>
             {(article.sourceName || article.publishedAt) && <span>•</span>}
             <span>
-              {locale === "it" ? "Lingua" : "Language"}: {languageLabel}
+              {t("languageLabel")}: {languageLabel}
             </span>
           </>
         )}
@@ -83,7 +81,7 @@ export default async function ArticleDetailPage({
         <p className="mt-4 text-sm text-muted-foreground">{article.excerpt}</p>
       )}
 
-      <ArticleActions locale={locale} href={href} />
+      <ArticleActions href={href} />
     </div>
   );
 }

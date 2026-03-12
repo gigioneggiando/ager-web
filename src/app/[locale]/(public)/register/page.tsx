@@ -1,9 +1,11 @@
 "use client";
 
 import { z } from "zod";
-import { getPasswordRuleIssues, PasswordSchema } from "@/lib/validation/password";
+import { useTranslations } from "next-intl";
+import { PasswordSchema } from "@/lib/validation/password";
+import { getFirstPasswordRuleMessage } from "@/lib/validation/passwordMessages";
 import { useAuthActions } from "@/lib/auth/session";
-import { useRouter, useParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import { Input } from "@/components/ui/input";
@@ -15,95 +17,73 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { ApiError, getProblemDetailsFieldErrors, getRetryAfterSeconds } from "@/lib/api/errors";
 import OAuthButtons from "@/components/auth/OAuthButtons";
 import PasswordStrengthIndicator from "@/components/auth/PasswordStrengthIndicator";
+import { useAppLocale } from "@/i18n/useAppLocale";
+import { useCountdown } from "@/lib/useCountdown";
 
 const REQUEST_SCHEMA = z.object({
   username: z.string().min(1).max(30),
   email: z.email().max(254),
 });
 
-const TEMP_EMAIL_DETAIL_EN = "Temporary email addresses are not allowed";
-const TEMP_EMAIL_DETAIL_IT = "Gli indirizzi email temporanei non sono consentiti.";
-
 const RESEND_COOLDOWN_MS = 30_000;
 
 export default function RegisterPage() {
+  const t = useTranslations("auth.register");
+  const common = useTranslations("common");
+  const tPasswordRules = useTranslations("auth.passwordRules");
   const { requestRegisterOtp, register } = useAuthActions();
   const router = useRouter();
-  const params = useParams() as { locale?: string };
-  const locale = params?.locale ?? "it";
-  const isIt = locale === "it";
+  const { locale } = useAppLocale();
 
-  const VERIFY_SCHEMA = useMemo(() => {
-    const passwordIssueMessage = (v: string): string | null => {
-      const issues = getPasswordRuleIssues(v);
-      const first = issues[0];
-      if (!first) return null;
-      if (first === "minLength") return isIt ? "Minimo 8 caratteri." : "At least 8 characters.";
-      if (first === "number") return isIt ? "Deve contenere almeno un numero." : "Must include at least one number.";
-      return isIt
-        ? "Deve contenere almeno un carattere speciale (es. !@#)."
-        : "Must include at least one special character (e.g. !@#).";
+  const verifySchema = useMemo(() => {
+    const passwordMessages = {
+      minLength: tPasswordRules("minLength"),
+      number: tPasswordRules("number"),
+      special: tPasswordRules("special"),
+      invalid: tPasswordRules("invalid"),
     };
 
     return z.object({
-      otpCode: z.string().regex(/^\d{6}$/, isIt ? "Il codice deve essere di 6 cifre" : "Code must be 6 digits"),
-      // optional: if provided, must satisfy PasswordSchema
+      otpCode: z.string().regex(/^\d{6}$/),
       password: z
         .string()
         .optional()
-        .transform((v) => (v === "" ? undefined : v))
-        .superRefine((v, ctx) => {
-          if (v === undefined) return;
-          const parsed = PasswordSchema.safeParse(v);
+        .transform((value) => (value === "" ? undefined : value))
+        .superRefine((value, ctx) => {
+          if (value === undefined) return;
+
+          const parsed = PasswordSchema.safeParse(value);
           if (!parsed.success) {
             ctx.addIssue({
               code: "custom",
-              message: passwordIssueMessage(v) ?? (isIt ? "Password non valida." : "Invalid password."),
+              message: getFirstPasswordRuleMessage(value, passwordMessages) ?? passwordMessages.invalid,
             });
-            return;
           }
-
-          const msg = passwordIssueMessage(v);
-          if (msg) ctx.addIssue({ code: "custom", message: msg });
         }),
     });
-  }, [isIt]);
+  }, [tPasswordRules]);
+
   const [errors, setErrors] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string[]>>({});
   const [info, setInfo] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
-
   const [step, setStep] = useState<"request" | "verify">("request");
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [otpCode, setOtpCode] = useState("");
-  const [password, setPassword] = useState<string>("");
+  const [password, setPassword] = useState("");
   const [resendAvailableAt, setResendAvailableAt] = useState<number | null>(null);
   const [rateLimitUntil, setRateLimitUntil] = useState<number | null>(null);
-  const [now, setNow] = useState<number>(() => Date.now());
 
-  useEffect(() => {
-    if (step !== "verify" && !rateLimitUntil) return;
-    if (step === "verify" && !resendAvailableAt && !rateLimitUntil) return;
-    const t = setInterval(() => setNow(Date.now()), 250);
-    return () => clearInterval(t);
-  }, [step, resendAvailableAt, rateLimitUntil]);
-
-  const resendSecondsLeft = useMemo(() => {
-    if (!resendAvailableAt) return 0;
-    return Math.max(0, Math.ceil((resendAvailableAt - now) / 1000));
-  }, [resendAvailableAt, now]);
-
+  const { secondsLeft: resendSecondsLeft } = useCountdown(resendAvailableAt, {
+    enabled: step === "verify",
+  });
+  const { secondsLeft: rateLimitSecondsLeft, isActive: isRateLimited } = useCountdown(rateLimitUntil);
   const canResend = step === "verify" && resendSecondsLeft === 0;
-  const rateLimitSecondsLeft = useMemo(() => {
-    if (!rateLimitUntil) return 0;
-    return Math.max(0, Math.ceil((rateLimitUntil - now) / 1000));
-  }, [rateLimitUntil, now]);
-  const isRateLimited = rateLimitSecondsLeft > 0;
 
   async function onRequestCode(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -113,34 +93,34 @@ export default function RegisterPage() {
 
     const parsed = REQUEST_SCHEMA.safeParse({ username, email });
     if (!parsed.success) {
-      setErrors(parsed.error.issues[0]?.message ?? (isIt ? "Controlla i dati inseriti." : "Please check your input."));
+      setErrors(t("errors.checkInput"));
       return;
     }
 
     setPending(true);
     try {
       await requestRegisterOtp({ username: parsed.data.username, email: parsed.data.email });
-      setInfo(isIt ? "Ti abbiamo inviato un codice via email." : "We sent you a code by email.");
+      setInfo(t("info.codeSent"));
       setStep("verify");
       setResendAvailableAt(Date.now() + RESEND_COOLDOWN_MS);
-    } catch (e: unknown) {
-      const err = e as ApiError;
+    } catch (error: unknown) {
+      const err = error as ApiError;
       if (err?.status === 429) {
         const retryAfter = getRetryAfterSeconds(err) ?? 60;
         setRateLimitUntil(Date.now() + retryAfter * 1000);
-        setErrors(isIt ? `Troppi tentativi. Riprova tra ${retryAfter}s.` : `Too many attempts. Try again in ${retryAfter}s.`);
+        setErrors(t("errors.tooManyAttempts", { seconds: retryAfter }));
       } else if (err?.status === 400 && err?.code === "temporary_email_not_allowed") {
-        setErrors(isIt ? TEMP_EMAIL_DETAIL_IT : TEMP_EMAIL_DETAIL_EN);
+        setErrors(t("errors.temporaryEmail"));
       } else if (err?.status === 409) {
         if (err?.code === "email_already_registered") {
-          setErrors(isIt ? "Email già registrata." : "Email already registered.");
+          setErrors(t("errors.emailAlreadyRegistered"));
         } else if (err?.code === "username_already_registered") {
-          setErrors(isIt ? "Username già in uso." : "Username already taken.");
+          setErrors(t("errors.usernameAlreadyTaken"));
         } else {
-          setErrors(err?.message ?? (isIt ? "Registrazione non disponibile." : "Registration not available."));
+          setErrors(err?.message ?? t("errors.registrationUnavailable"));
         }
       } else {
-        setErrors(err?.message ?? (isIt ? "Impossibile inviare il codice." : "Unable to send the code."));
+        setErrors(err?.message ?? t("errors.sendCodeFailed"));
       }
     } finally {
       setPending(false);
@@ -152,9 +132,9 @@ export default function RegisterPage() {
     setErrors(null);
     setFieldErrors({});
 
-    const parsed = VERIFY_SCHEMA.safeParse({ otpCode, password });
+    const parsed = verifySchema.safeParse({ otpCode, password });
     if (!parsed.success) {
-      setErrors(parsed.error.issues[0]?.message ?? (isIt ? "Controlla i dati inseriti." : "Please check your input."));
+      setErrors(parsed.error.issues[0]?.message ?? t("errors.checkInput"));
       return;
     }
 
@@ -167,28 +147,24 @@ export default function RegisterPage() {
         password: parsed.data.password,
       });
       router.push(`/${locale}/feed`);
-    } catch (e: unknown) {
-      const err = e as ApiError;
+    } catch (error: unknown) {
+      const err = error as ApiError;
       if (err?.status === 401) {
-        setErrors(isIt ? "Codice non valido o scaduto." : "Invalid or expired code.");
+        setErrors(t("errors.invalidOrExpiredCode"));
       } else if (err?.status === 429) {
         const retryAfter = getRetryAfterSeconds(err) ?? 60;
         setRateLimitUntil(Date.now() + retryAfter * 1000);
-        setErrors(isIt ? `Troppi tentativi. Riprova tra ${retryAfter}s.` : `Too many attempts. Try again in ${retryAfter}s.`);
+        setErrors(t("errors.tooManyAttempts", { seconds: retryAfter }));
       } else if (err?.status === 400 && err?.code === "temporary_email_not_allowed") {
-        setErrors(isIt ? TEMP_EMAIL_DETAIL_IT : TEMP_EMAIL_DETAIL_EN);
+        setErrors(t("errors.temporaryEmail"));
       } else if (err?.status === 400 && err?.code === "otp_username_mismatch") {
-        setErrors(
-          isIt
-            ? "Lo username non coincide con la richiesta codice (usa lo stesso dello step precedente)."
-            : "Username doesn't match the code request (use the same one from the previous step)."
-        );
+        setErrors(t("errors.usernameMismatch"));
       } else if (err?.status === 422) {
         const fe = getProblemDetailsFieldErrors(err.details);
         setFieldErrors(fe);
-        setErrors(isIt ? "Correggi i campi evidenziati." : "Please fix the highlighted fields.");
+        setErrors(t("errors.fixHighlightedFields"));
       } else {
-        setErrors(err?.message ?? (isIt ? "Registrazione fallita." : "Register failed."));
+        setErrors(err?.message ?? t("errors.registerFailed"));
       }
     } finally {
       setPending(false);
@@ -202,18 +178,18 @@ export default function RegisterPage() {
     setPending(true);
     try {
       await requestRegisterOtp({ username, email });
-      setInfo(isIt ? "Ti abbiamo inviato un codice via email." : "We sent you a code by email.");
+      setInfo(t("info.codeSent"));
       setResendAvailableAt(Date.now() + RESEND_COOLDOWN_MS);
-    } catch (e: unknown) {
-      const err = e as ApiError;
+    } catch (error: unknown) {
+      const err = error as ApiError;
       if (err?.status === 429) {
         const retryAfter = getRetryAfterSeconds(err) ?? 60;
         setRateLimitUntil(Date.now() + retryAfter * 1000);
-        setErrors(isIt ? `Troppi tentativi. Riprova tra ${retryAfter}s.` : `Too many attempts. Try again in ${retryAfter}s.`);
+        setErrors(t("errors.tooManyAttempts", { seconds: retryAfter }));
       } else if (err?.status === 400 && err?.code === "temporary_email_not_allowed") {
-        setErrors(isIt ? TEMP_EMAIL_DETAIL_IT : TEMP_EMAIL_DETAIL_EN);
+        setErrors(t("errors.temporaryEmail"));
       } else {
-        setErrors(err?.message ?? (isIt ? "Impossibile inviare il codice." : "Unable to send the code."));
+        setErrors(err?.message ?? t("errors.sendCodeFailed"));
       }
     } finally {
       setPending(false);
@@ -236,85 +212,73 @@ export default function RegisterPage() {
                   priority
                 />
               </span>
-              <CardTitle className="text-2xl">
-                {isIt ? "Crea account" : "Create account"}
-              </CardTitle>
+              <CardTitle className="text-2xl">{t("title")}</CardTitle>
             </div>
-            <CardDescription>
-              {isIt
-                ? "Riceverai un codice via email per completare la registrazione."
-                : "We’ll email you a code to complete your registration."}
-            </CardDescription>
+            <CardDescription>{t("description")}</CardDescription>
           </CardHeader>
 
           <CardContent className="space-y-6">
             {step === "request" ? (
               <form onSubmit={onRequestCode} className="space-y-3">
                 <div>
-                  <label className="mb-1 block text-sm">Username</label>
+                  <label className="mb-1 block text-sm">{common("username")}</label>
                   <Input
                     name="username"
                     required
                     maxLength={30}
                     value={username}
-                    onChange={(e) => setUsername(e.target.value)}
+                    onChange={(event) => setUsername(event.target.value)}
                     disabled={pending}
                   />
                 </div>
                 <div>
-                  <label className="mb-1 block text-sm">Email</label>
+                  <label className="mb-1 block text-sm">{common("email")}</label>
                   <Input
                     name="email"
                     type="email"
                     required
                     maxLength={254}
                     value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                    onChange={(event) => setEmail(event.target.value)}
                     disabled={pending}
                   />
                 </div>
                 {info && <p className="text-sm text-muted-foreground">{info}</p>}
                 {isRateLimited && (
                   <p className="text-sm text-muted-foreground">
-                    {isIt ? `Attendi ${rateLimitSecondsLeft}s prima di riprovare.` : `Wait ${rateLimitSecondsLeft}s before retrying.`}
+                    {t("errors.waitBeforeRetry", { seconds: rateLimitSecondsLeft })}
                   </p>
                 )}
                 {errors && <p className="text-sm text-destructive">{errors}</p>}
                 <Button type="submit" disabled={pending || isRateLimited} className="w-full">
-                  {pending
-                    ? isIt
-                      ? "Invio..."
-                      : "Sending..."
-                    : isIt
-                      ? "Richiedi codice"
-                      : "Request code"}
+                  {pending ? t("sendLoading") : t("requestCode")}
                 </Button>
               </form>
             ) : (
               <form onSubmit={onVerify} className="space-y-3">
                 <div>
-                  <label className="mb-1 block text-sm">Username</label>
+                  <label className="mb-1 block text-sm">{common("username")}</label>
                   <Input name="username" value={username} disabled />
                   {fieldErrors.username?.[0] && (
                     <p className="text-sm text-destructive">{fieldErrors.username[0]}</p>
                   )}
                 </div>
                 <div>
-                  <label className="mb-1 block text-sm">Email</label>
+                  <label className="mb-1 block text-sm">{common("email")}</label>
                   <Input name="email" type="email" value={email} disabled />
                   {fieldErrors.email?.[0] && (
                     <p className="text-sm text-destructive">{fieldErrors.email[0]}</p>
                   )}
                 </div>
                 <div>
-                  <label className="mb-1 block text-sm">OTP</label>
+                  <label className="mb-1 block text-sm">{common("otp")}</label>
                   <Input
                     name="otpCode"
                     inputMode="numeric"
                     autoComplete="one-time-code"
-                    placeholder={isIt ? "6 cifre" : "6 digits"}
+                    placeholder={t("codePlaceholder")}
                     value={otpCode}
-                    onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                    onChange={(event) => setOtpCode(event.target.value.replace(/\D/g, "").slice(0, 6))}
                     disabled={pending}
                   />
                   {fieldErrors.otpCode?.[0] && (
@@ -322,42 +286,32 @@ export default function RegisterPage() {
                   )}
                 </div>
                 <div>
-                  <label className="mb-1 block text-sm">Password</label>
+                  <label className="mb-1 block text-sm">{common("password")}</label>
                   <Input
                     name="password"
                     type="password"
-                    placeholder={isIt ? "(opzionale)" : "(optional)"}
+                    placeholder={t("optionalPassword")}
                     value={password}
-                    onChange={(e) => setPassword(e.target.value)}
+                    onChange={(event) => setPassword(event.target.value)}
                     disabled={pending}
                   />
                   {fieldErrors.password?.[0] && (
                     <p className="text-sm text-destructive">{fieldErrors.password[0]}</p>
                   )}
-                  <PasswordStrengthIndicator password={password} locale={locale as "en" | "it"} />
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    {isIt
-                      ? "Se la imposti: almeno 8 caratteri, 1 numero, 1 carattere speciale."
-                      : "If you set it: at least 8 characters, 1 number, 1 special character."}
-                  </p>
+                  <PasswordStrengthIndicator password={password} locale={locale} />
+                  <p className="mt-1 text-xs text-muted-foreground">{t("passwordHint")}</p>
                 </div>
                 {info && <p className="text-sm text-muted-foreground">{info}</p>}
                 {isRateLimited && (
                   <p className="text-sm text-muted-foreground">
-                    {isIt ? `Attendi ${rateLimitSecondsLeft}s prima di riprovare.` : `Wait ${rateLimitSecondsLeft}s before retrying.`}
+                    {t("errors.waitBeforeRetry", { seconds: rateLimitSecondsLeft })}
                   </p>
                 )}
                 {errors && <p className="text-sm text-destructive">{errors}</p>}
 
                 <div className="flex gap-2">
                   <Button type="submit" disabled={pending || isRateLimited} className="flex-1">
-                    {pending
-                      ? isIt
-                        ? "Verifica..."
-                        : "Verifying..."
-                      : isIt
-                        ? "Verifica"
-                        : "Verify"}
+                    {pending ? t("verifyLoading") : t("verify")}
                   </Button>
                   <Button
                     type="button"
@@ -366,7 +320,7 @@ export default function RegisterPage() {
                     onClick={onResend}
                     className="flex-1"
                   >
-                    {isIt ? "Invia di nuovo" : "Resend"}
+                    {t("resend")}
                     {resendSecondsLeft > 0 ? ` (${resendSecondsLeft}s)` : ""}
                   </Button>
                 </div>
@@ -386,22 +340,22 @@ export default function RegisterPage() {
                     setResendAvailableAt(null);
                   }}
                 >
-                  {isIt ? "Modifica dati" : "Edit details"}
+                  {t("editDetails")}
                 </Button>
               </form>
             )}
 
             <div className="text-sm text-muted-foreground">
-              {isIt ? "Hai già un account?" : "Already have an account?"}{" "}
+              {t("alreadyHaveAccount")}{" "}
               <Link href={`/${locale}/login`} className="hover:underline">
-                {isIt ? "Accedi" : "Sign in"}
+                {t("signIn")}
               </Link>
             </div>
 
             <div>
               <div className="mb-4 flex items-center gap-3">
                 <div className="h-px flex-1 bg-border" />
-                <div className="text-xs text-muted-foreground">{isIt ? "Oppure" : "Or"}</div>
+                <div className="text-xs text-muted-foreground">{common("or")}</div>
                 <div className="h-px flex-1 bg-border" />
               </div>
               <OAuthButtons disabled={pending} />
@@ -411,7 +365,7 @@ export default function RegisterPage() {
 
         <div className="mt-4 text-center text-xs text-muted-foreground">
           <Link href={`/${locale}`} className="hover:underline">
-            {isIt ? "Torna alla home" : "Back to home"}
+            {t("backHome")}
           </Link>
         </div>
       </div>

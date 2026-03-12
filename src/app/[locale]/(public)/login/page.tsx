@@ -3,8 +3,9 @@
 import Link from "next/link";
 import Image from "next/image";
 import { z } from "zod";
+import { useTranslations } from "next-intl";
 import { useAuthActions } from "@/lib/auth/session";
-import { useRouter, useParams, useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
@@ -14,18 +15,18 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Suspense, useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { ApiError, getRetryAfterSeconds } from "@/lib/api/errors";
 import OAuthButtons from "@/components/auth/OAuthButtons";
+import { useAppLocale } from "@/i18n/useAppLocale";
+import { useCountdown } from "@/lib/useCountdown";
 
 const REQUEST_SCHEMA = z.object({
   email: z.email().max(254),
 });
 
 const VERIFY_SCHEMA = z.object({
-  otpCode: z
-    .string()
-    .regex(/^\d{6}$/),
+  otpCode: z.string().regex(/^\d{6}$/),
 });
 
 const PASSWORD_SCHEMA = z.object({
@@ -44,11 +45,12 @@ export default function LoginPage() {
 }
 
 function LoginPageInner() {
+  const t = useTranslations("auth.login");
+  const common = useTranslations("common");
   const { requestLoginOtp, login } = useAuthActions();
   const router = useRouter();
-  const { locale } = useParams() as { locale: "it" | "en" };
+  const { locale } = useAppLocale();
   const searchParams = useSearchParams();
-  const isIt = locale === "it";
   const [errors, setErrors] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
@@ -59,27 +61,13 @@ function LoginPageInner() {
   const [password, setPassword] = useState("");
   const [resendAvailableAt, setResendAvailableAt] = useState<number | null>(null);
   const [rateLimitUntil, setRateLimitUntil] = useState<number | null>(null);
-  const [now, setNow] = useState<number>(() => Date.now());
 
-  useEffect(() => {
-    if (step !== "verify" && !rateLimitUntil) return;
-    if (step === "verify" && !resendAvailableAt && !rateLimitUntil) return;
-    const t = setInterval(() => setNow(Date.now()), 250);
-    return () => clearInterval(t);
-  }, [step, resendAvailableAt, rateLimitUntil]);
-
-  const resendSecondsLeft = useMemo(() => {
-    if (!resendAvailableAt) return 0;
-    return Math.max(0, Math.ceil((resendAvailableAt - now) / 1000));
-  }, [resendAvailableAt, now]);
+  const { secondsLeft: resendSecondsLeft } = useCountdown(resendAvailableAt, {
+    enabled: step === "verify",
+  });
+  const { secondsLeft: rateLimitSecondsLeft, isActive: isRateLimited } = useCountdown(rateLimitUntil);
 
   const canResend = step === "verify" && resendSecondsLeft === 0;
-  const rateLimitSecondsLeft = useMemo(() => {
-    if (!rateLimitUntil) return 0;
-    return Math.max(0, Math.ceil((rateLimitUntil - now) / 1000));
-  }, [rateLimitUntil, now]);
-
-  const isRateLimited = rateLimitSecondsLeft > 0;
 
   function resetOtpFlow() {
     setStep("request");
@@ -96,16 +84,11 @@ function LoginPageInner() {
     const fallback = searchParams.get("fallback");
     if (fallback !== "external_auth_email_missing") return;
 
-    // Force OTP flow and show the actionable message inline.
     setMethod("otp");
     resetOtpFlow();
     setErrors(null);
-    setInfo(
-      isIt
-        ? "Apple/Google non ha condiviso la tua email. Per continuare, accedi con OTP via email."
-        : "Apple/Google didn’t share your email. To continue, sign in with an email OTP."
-    );
-  }, [searchParams, isIt]);
+    setInfo(t("fallbackExternalEmailMissing"));
+  }, [searchParams, t]);
 
   async function onRequestCode(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -113,28 +96,24 @@ function LoginPageInner() {
 
     const parsed = REQUEST_SCHEMA.safeParse({ email });
     if (!parsed.success) {
-      setErrors(isIt ? "Inserisci una email valida." : "Enter a valid email.");
+      setErrors(t("errors.invalidEmail"));
       return;
     }
 
     setPending(true);
     try {
       await requestLoginOtp(parsed.data.email);
-      setInfo(
-        isIt
-          ? "Se l’account esiste riceverai un codice via email."
-          : "If the account exists, you’ll receive a code by email."
-      );
+      setInfo(t("info.codeSent"));
       setStep("verify");
       setResendAvailableAt(Date.now() + RESEND_COOLDOWN_MS);
-    } catch (e: unknown) {
-      const err = e as ApiError;
+    } catch (error: unknown) {
+      const err = error as ApiError;
       if (err?.status === 429) {
         const retryAfter = getRetryAfterSeconds(err) ?? 60;
         setRateLimitUntil(Date.now() + retryAfter * 1000);
-        setErrors(isIt ? `Troppi tentativi. Riprova tra ${retryAfter}s.` : `Too many attempts. Try again in ${retryAfter}s.`);
+        setErrors(t("errors.tooManyAttempts", { seconds: retryAfter }));
       } else {
-        setErrors(err?.message ?? (isIt ? "Impossibile inviare il codice." : "Unable to send the code."));
+        setErrors(err?.message ?? t("errors.sendCodeFailed"));
       }
     } finally {
       setPending(false);
@@ -147,7 +126,7 @@ function LoginPageInner() {
 
     const parsed = VERIFY_SCHEMA.safeParse({ otpCode });
     if (!parsed.success) {
-      setErrors(isIt ? "Inserisci un codice di 6 cifre." : "Enter a 6-digit code.");
+      setErrors(t("errors.invalidCode"));
       return;
     }
 
@@ -155,17 +134,17 @@ function LoginPageInner() {
     try {
       await login({ email, otpCode: parsed.data.otpCode });
       router.push(`/${locale}/feed`);
-    } catch (e: unknown) {
-      const err = e as ApiError;
+    } catch (error: unknown) {
+      const err = error as ApiError;
 
       if (err?.status === 401 || err?.status === 403) {
-        setErrors(isIt ? "Credenziali non valide." : "Invalid credentials.");
+        setErrors(t("errors.invalidCredentials"));
       } else if (err?.status === 429) {
         const retryAfter = getRetryAfterSeconds(err) ?? 60;
         setRateLimitUntil(Date.now() + retryAfter * 1000);
-        setErrors(isIt ? `Troppi tentativi. Riprova tra ${retryAfter}s.` : `Too many attempts. Try again in ${retryAfter}s.`);
+        setErrors(t("errors.tooManyAttempts", { seconds: retryAfter }));
       } else {
-        setErrors(err?.message ?? (isIt ? "Impossibile effettuare il login." : "Unable to sign in."));
+        setErrors(err?.message ?? t("errors.signInFailed"));
       }
     } finally {
       setPending(false);
@@ -177,20 +156,16 @@ function LoginPageInner() {
     setPending(true);
     try {
       await requestLoginOtp(email);
-      setInfo(
-        isIt
-          ? "Se l’account esiste riceverai un codice via email."
-          : "If the account exists, you’ll receive a code by email."
-      );
+      setInfo(t("info.codeSent"));
       setResendAvailableAt(Date.now() + RESEND_COOLDOWN_MS);
-    } catch (e: unknown) {
-      const err = e as ApiError;
+    } catch (error: unknown) {
+      const err = error as ApiError;
       if (err?.status === 429) {
         const retryAfter = getRetryAfterSeconds(err) ?? 60;
         setRateLimitUntil(Date.now() + retryAfter * 1000);
-        setErrors(isIt ? `Troppi tentativi. Riprova tra ${retryAfter}s.` : `Too many attempts. Try again in ${retryAfter}s.`);
+        setErrors(t("errors.tooManyAttempts", { seconds: retryAfter }));
       } else {
-        setErrors(err?.message ?? (isIt ? "Impossibile inviare il codice." : "Unable to send the code."));
+        setErrors(err?.message ?? t("errors.sendCodeFailed"));
       }
     } finally {
       setPending(false);
@@ -203,10 +178,9 @@ function LoginPageInner() {
 
     const parsed = PASSWORD_SCHEMA.safeParse({ email, password });
     if (!parsed.success) {
-      // keep it simple & localized
-      if (!email.trim()) setErrors(isIt ? "Inserisci la tua email." : "Enter your email.");
-      else if (!password.trim()) setErrors(isIt ? "Inserisci la password." : "Enter your password.");
-      else setErrors(isIt ? "Controlla i dati inseriti." : "Please check your input.");
+      if (!email.trim()) setErrors(t("errors.enterEmail"));
+      else if (!password.trim()) setErrors(t("errors.enterPassword"));
+      else setErrors(t("errors.checkInput"));
       return;
     }
 
@@ -214,17 +188,17 @@ function LoginPageInner() {
     try {
       await login({ email: parsed.data.email, password: parsed.data.password });
       router.push(`/${locale}/feed`);
-    } catch (e: unknown) {
-      const err = e as ApiError;
+    } catch (error: unknown) {
+      const err = error as ApiError;
 
       if (err?.status === 401 || err?.status === 403) {
-        setErrors(isIt ? "Credenziali non valide." : "Invalid credentials.");
+        setErrors(t("errors.invalidCredentials"));
       } else if (err?.status === 429) {
         const retryAfter = getRetryAfterSeconds(err) ?? 60;
         setRateLimitUntil(Date.now() + retryAfter * 1000);
-        setErrors(isIt ? `Troppi tentativi. Riprova tra ${retryAfter}s.` : `Too many attempts. Try again in ${retryAfter}s.`);
+        setErrors(t("errors.tooManyAttempts", { seconds: retryAfter }));
       } else {
-        setErrors(err?.message ?? (isIt ? "Impossibile effettuare il login." : "Unable to sign in."));
+        setErrors(err?.message ?? t("errors.signInFailed"));
       }
     } finally {
       setPending(false);
@@ -247,56 +221,46 @@ function LoginPageInner() {
                   priority
                 />
               </span>
-              <CardTitle className="text-2xl">{isIt ? "Accedi" : "Sign in"}</CardTitle>
+              <CardTitle className="text-2xl">{t("title")}</CardTitle>
             </div>
-            <CardDescription>
-              {isIt
-                ? "Continua con email e codice, oppure con password."
-                : "Continue with email and a code, or with your password."}
-            </CardDescription>
+            <CardDescription>{t("description")}</CardDescription>
           </CardHeader>
 
           <CardContent className="space-y-6">
             {method === "password" ? (
               <form onSubmit={onPasswordLogin} className="space-y-3">
                 <div>
-                  <label className="mb-1 block text-sm">Email</label>
+                  <label className="mb-1 block text-sm">{common("email")}</label>
                   <Input
                     name="email"
                     type="email"
                     required
                     maxLength={254}
                     value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                    onChange={(event) => setEmail(event.target.value)}
                     disabled={pending}
                   />
                 </div>
                 <div>
-                  <label className="mb-1 block text-sm">{isIt ? "Password" : "Password"}</label>
+                  <label className="mb-1 block text-sm">{common("password")}</label>
                   <Input
                     name="password"
                     type="password"
                     autoComplete="current-password"
                     value={password}
-                    onChange={(e) => setPassword(e.target.value)}
+                    onChange={(event) => setPassword(event.target.value)}
                     disabled={pending}
                   />
                 </div>
                 {info && <p className="text-sm text-muted-foreground">{info}</p>}
                 {isRateLimited && (
                   <p className="text-sm text-muted-foreground">
-                    {isIt ? `Attendi ${rateLimitSecondsLeft}s prima di riprovare.` : `Wait ${rateLimitSecondsLeft}s before retrying.`}
+                    {t("errors.waitBeforeRetry", { seconds: rateLimitSecondsLeft })}
                   </p>
                 )}
                 {errors && <p className="text-sm text-destructive">{errors}</p>}
                 <Button type="submit" disabled={pending || isRateLimited} className="w-full">
-                  {pending
-                    ? isIt
-                      ? "Accesso..."
-                      : "Signing in..."
-                    : isIt
-                      ? "Accedi"
-                      : "Sign in"}
+                  {pending ? t("signInLoading") : t("title")}
                 </Button>
 
                 <Button
@@ -310,38 +274,32 @@ function LoginPageInner() {
                     resetOtpFlow();
                   }}
                 >
-                  {isIt ? "Accedi con codice invece" : "Use code instead"}
+                  {t("useCodeInstead")}
                 </Button>
               </form>
             ) : step === "request" ? (
               <form onSubmit={onRequestCode} className="space-y-3">
                 <div>
-                  <label className="mb-1 block text-sm">Email</label>
+                  <label className="mb-1 block text-sm">{common("email")}</label>
                   <Input
                     name="email"
                     type="email"
                     required
                     maxLength={254}
                     value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                    onChange={(event) => setEmail(event.target.value)}
                     disabled={pending}
                   />
                 </div>
                 {info && <p className="text-sm text-muted-foreground">{info}</p>}
                 {isRateLimited && (
                   <p className="text-sm text-muted-foreground">
-                    {isIt ? `Attendi ${rateLimitSecondsLeft}s prima di riprovare.` : `Wait ${rateLimitSecondsLeft}s before retrying.`}
+                    {t("errors.waitBeforeRetry", { seconds: rateLimitSecondsLeft })}
                   </p>
                 )}
                 {errors && <p className="text-sm text-destructive">{errors}</p>}
                 <Button type="submit" disabled={pending || isRateLimited} className="w-full">
-                  {pending
-                    ? isIt
-                      ? "Invio..."
-                      : "Sending..."
-                    : isIt
-                      ? "Richiedi codice"
-                      : "Request code"}
+                  {pending ? t("sendLoading") : t("requestCode")}
                 </Button>
 
                 <Button
@@ -355,43 +313,37 @@ function LoginPageInner() {
                     resetOtpFlow();
                   }}
                 >
-                  {isIt ? "Accedi con password invece" : "Sign in with password instead"}
+                  {t("usePasswordInstead")}
                 </Button>
               </form>
             ) : (
               <form onSubmit={onVerify} className="space-y-3">
                 <div>
-                  <label className="mb-1 block text-sm">Email</label>
+                  <label className="mb-1 block text-sm">{common("email")}</label>
                   <Input name="email" type="email" value={email} disabled />
                 </div>
                 <div>
-                  <label className="mb-1 block text-sm">OTP</label>
+                  <label className="mb-1 block text-sm">{common("otp")}</label>
                   <Input
                     name="otpCode"
                     inputMode="numeric"
                     autoComplete="one-time-code"
-                    placeholder={isIt ? "6 cifre" : "6 digits"}
+                    placeholder={t("codePlaceholder")}
                     value={otpCode}
-                    onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                    onChange={(event) => setOtpCode(event.target.value.replace(/\D/g, "").slice(0, 6))}
                     disabled={pending}
                   />
                 </div>
                 {info && <p className="text-sm text-muted-foreground">{info}</p>}
                 {isRateLimited && (
                   <p className="text-sm text-muted-foreground">
-                    {isIt ? `Attendi ${rateLimitSecondsLeft}s prima di riprovare.` : `Wait ${rateLimitSecondsLeft}s before retrying.`}
+                    {t("errors.waitBeforeRetry", { seconds: rateLimitSecondsLeft })}
                   </p>
                 )}
                 {errors && <p className="text-sm text-destructive">{errors}</p>}
                 <div className="flex gap-2">
                   <Button type="submit" disabled={pending || isRateLimited} className="flex-1">
-                    {pending
-                      ? isIt
-                        ? "Verifica..."
-                        : "Verifying..."
-                      : isIt
-                        ? "Verifica"
-                        : "Verify"}
+                    {pending ? t("verifyLoading") : t("verify")}
                   </Button>
                   <Button
                     type="button"
@@ -400,7 +352,7 @@ function LoginPageInner() {
                     onClick={onResend}
                     className="flex-1"
                   >
-                    {isIt ? "Invia di nuovo" : "Resend"}
+                    {t("resend")}
                     {resendSecondsLeft > 0 ? ` (${resendSecondsLeft}s)` : ""}
                   </Button>
                 </div>
@@ -414,7 +366,7 @@ function LoginPageInner() {
                       resetOtpFlow();
                     }}
                   >
-                    {isIt ? "Cambia email" : "Change email"}
+                    {t("changeEmail")}
                   </Button>
 
                   <Button
@@ -427,24 +379,21 @@ function LoginPageInner() {
                       resetOtpFlow();
                     }}
                   >
-                    {isIt ? "Accedi con password invece" : "Sign in with password instead"}
+                    {t("usePasswordInstead")}
                   </Button>
                 </div>
               </form>
             )}
 
             <div className="flex items-center justify-between text-sm">
-              <Link
-                href={`/${locale}/forgot-password`}
-                className="text-muted-foreground hover:underline"
-              >
-                {isIt ? "Password dimenticata?" : "Forgot password?"}
+              <Link href={`/${locale}/forgot-password`} className="text-muted-foreground hover:underline">
+                {t("forgotPassword")}
               </Link>
 
               <div className="text-muted-foreground">
-                {isIt ? "Non hai un account?" : "Don’t have an account?"}{" "}
+                {t("noAccount")}{" "}
                 <Link href={`/${locale}/register`} className="hover:underline">
-                  {isIt ? "Registrati" : "Sign up"}
+                  {t("signUp")}
                 </Link>
               </div>
             </div>
@@ -452,14 +401,13 @@ function LoginPageInner() {
             <div>
               <div className="mb-4 flex items-center gap-3">
                 <div className="h-px flex-1 bg-border" />
-                <div className="text-xs text-muted-foreground">{isIt ? "Oppure" : "Or"}</div>
+                <div className="text-xs text-muted-foreground">{common("or")}</div>
                 <div className="h-px flex-1 bg-border" />
               </div>
               <OAuthButtons disabled={pending} />
             </div>
           </CardContent>
         </Card>
-
       </div>
     </main>
   );

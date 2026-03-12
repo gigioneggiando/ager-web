@@ -382,7 +382,11 @@ export default async function Home({ params }: PageProps) {
               </div>
 
               <div className="flex flex-col gap-2 text-sm sm:items-end">
-                <div className="text-muted-foreground">© 2025 Ager — Tutti i diritti riservati</div>
+                <div className="text-muted-foreground">
+                  {isIt
+                    ? "© 2025 Ager — Tutti i diritti riservati"
+                    : "© 2025 Ager — All rights reserved"}
+                </div>
                 <div className="text-muted-foreground">
                   <a className="hover:text-foreground" href="mailto:ager.org@gmail.com">
                     {isIt ? "Contatti" : "Contact"}

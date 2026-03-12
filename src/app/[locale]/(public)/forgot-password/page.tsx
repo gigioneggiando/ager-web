@@ -2,52 +2,50 @@
 
 import Link from "next/link";
 import { z } from "zod";
-import { useParams, useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useTranslations } from "next-intl";
+import { useRouter } from "next/navigation";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { ApiError, getProblemDetailsFieldErrors, getRetryAfterSeconds } from "@/lib/api/errors";
-import { getPasswordRuleIssues, PasswordSchema } from "@/lib/validation/password";
+import { PasswordSchema } from "@/lib/validation/password";
+import { getFirstPasswordRuleMessage } from "@/lib/validation/passwordMessages";
 import { requestPasswordResetOtp, resetPassword } from "@/lib/api/auth";
 import PasswordStrengthIndicator from "@/components/auth/PasswordStrengthIndicator";
+import { useAppLocale } from "@/i18n/useAppLocale";
+import { useCountdown } from "@/lib/useCountdown";
+import { useMemo, useState } from "react";
 
 const REQUEST_SCHEMA = z.object({
   email: z.email().max(254),
 });
 
 export default function ForgotPasswordPage() {
-  const { locale } = useParams() as { locale: "it" | "en" };
-  const isIt = locale === "it";
+  const t = useTranslations("auth.forgotPassword");
+  const common = useTranslations("common");
+  const tPasswordRules = useTranslations("auth.passwordRules");
+  const { locale } = useAppLocale();
   const router = useRouter();
 
-  const RESET_SCHEMA = useMemo(() => {
-    const passwordIssueMessage = (v: string): string | null => {
-      const issues = getPasswordRuleIssues(v);
-      const first = issues[0];
-      if (!first) return null;
-      if (first === "minLength") return isIt ? "Minimo 8 caratteri." : "At least 8 characters.";
-      if (first === "number") return isIt ? "Deve contenere almeno un numero." : "Must include at least one number.";
-      return isIt
-        ? "Deve contenere almeno un carattere speciale (es. !@#)."
-        : "Must include at least one special character (e.g. !@#).";
+  const resetSchema = useMemo(() => {
+    const passwordMessages = {
+      minLength: tPasswordRules("minLength"),
+      number: tPasswordRules("number"),
+      special: tPasswordRules("special"),
+      invalid: tPasswordRules("invalid"),
     };
 
     return z
       .object({
         otpCode: z.string().regex(/^\d{6}$/),
-        newPassword: z.string().superRefine((v, ctx) => {
-          // Keep backend/client aligned by re-using the shared schema as a baseline,
-          // but show localized, user-friendly messages.
-          const shared = PasswordSchema.safeParse(v);
+        newPassword: z.string().superRefine((value, ctx) => {
+          const shared = PasswordSchema.safeParse(value);
           if (!shared.success) {
-            const msg = passwordIssueMessage(v) ?? (isIt ? "Password non valida." : "Invalid password.");
-            ctx.addIssue({ code: "custom", message: msg });
-            return;
+            ctx.addIssue({
+              code: "custom",
+              message: getFirstPasswordRuleMessage(value, passwordMessages) ?? passwordMessages.invalid,
+            });
           }
-
-          const msg = passwordIssueMessage(v);
-          if (msg) ctx.addIssue({ code: "custom", message: msg });
         }),
         confirmNewPassword: z.string(),
       })
@@ -56,11 +54,11 @@ export default function ForgotPasswordPage() {
           ctx.addIssue({
             code: "custom",
             path: ["confirmNewPassword"],
-            message: isIt ? "Le password non coincidono." : "Passwords do not match.",
+            message: tPasswordRules("mismatch"),
           });
         }
       });
-  }, [isIt]);
+  }, [tPasswordRules]);
 
   const [step, setStep] = useState<"request" | "reset">("request");
   const [pending, setPending] = useState(false);
@@ -68,38 +66,18 @@ export default function ForgotPasswordPage() {
   const [errors, setErrors] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string[]>>({});
   const [rateLimitUntil, setRateLimitUntil] = useState<number | null>(null);
-  const [now, setNow] = useState<number>(() => Date.now());
-
   const [email, setEmail] = useState("");
   const [otpCode, setOtpCode] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmNewPassword, setConfirmNewPassword] = useState("");
+
+  const { secondsLeft: rateLimitSecondsLeft, isActive: isRateLimited } = useCountdown(rateLimitUntil);
 
   function resetMessages() {
     setInfo(null);
     setErrors(null);
     setFieldErrors({});
   }
-
-  useEffect(() => {
-    if (!rateLimitUntil) return;
-    const t = setInterval(() => setNow(Date.now()), 250);
-    return () => clearInterval(t);
-  }, [rateLimitUntil]);
-
-  const rateLimitSecondsLeft = useMemo(() => {
-    if (!rateLimitUntil) return 0;
-    return Math.max(0, Math.ceil((rateLimitUntil - now) / 1000));
-  }, [rateLimitUntil, now]);
-
-  const isRateLimited = rateLimitSecondsLeft > 0;
-
-  useEffect(() => {
-    // Clear field errors when switching steps
-    setInfo(null);
-    setErrors(null);
-    setFieldErrors({});
-  }, [step]);
 
   const backToLoginHref = `/${locale}/login`;
 
@@ -109,27 +87,23 @@ export default function ForgotPasswordPage() {
 
     const parsed = REQUEST_SCHEMA.safeParse({ email });
     if (!parsed.success) {
-      setErrors(isIt ? "Inserisci una email valida." : "Enter a valid email.");
+      setErrors(t("errors.invalidEmail"));
       return;
     }
 
     setPending(true);
     try {
       await requestPasswordResetOtp(parsed.data.email);
-      setInfo(
-        isIt
-          ? "Se l’account esiste riceverai un codice via email."
-          : "If the account exists, you’ll receive a code by email."
-      );
+      setInfo(t("info.codeSent"));
       setStep("reset");
-    } catch (e: unknown) {
-      const err = e as ApiError;
+    } catch (error: unknown) {
+      const err = error as ApiError;
       if (err?.status === 429) {
         const retryAfter = getRetryAfterSeconds(err) ?? 60;
         setRateLimitUntil(Date.now() + retryAfter * 1000);
-        setErrors(isIt ? `Troppi tentativi. Riprova tra ${retryAfter}s.` : `Too many attempts. Try again in ${retryAfter}s.`);
+        setErrors(t("errors.tooManyAttempts", { seconds: retryAfter }));
       } else {
-        setErrors(err?.message ?? (isIt ? "Impossibile inviare il codice." : "Unable to send the code."));
+        setErrors(err?.message ?? t("errors.sendCodeFailed"));
       }
     } finally {
       setPending(false);
@@ -139,22 +113,22 @@ export default function ForgotPasswordPage() {
   function friendly400(err: ApiError): string {
     const code = err.code ?? "";
     if (code && err.message === code) {
-      if (code.includes("password")) return isIt ? "Password non valida." : "Invalid password.";
-      if (code.includes("otp") || code.includes("code")) return isIt ? "Codice non valido." : "Invalid code.";
-      if (code.includes("email")) return isIt ? "Email non valida." : "Invalid email.";
-      return isIt ? "Richiesta non valida." : "Invalid request.";
+      if (code.includes("password")) return t("errors.invalidPassword");
+      if (code.includes("otp") || code.includes("code")) return t("errors.invalidCode");
+      if (code.includes("email")) return t("errors.invalidEmailValue");
+      return t("errors.invalidRequest");
     }
-    return err.message || (isIt ? "Richiesta non valida." : "Invalid request.");
+
+    return err.message || t("errors.invalidRequest");
   }
 
   async function onReset(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     resetMessages();
 
-    const parsed = RESET_SCHEMA.safeParse({ otpCode, newPassword, confirmNewPassword });
+    const parsed = resetSchema.safeParse({ otpCode, newPassword, confirmNewPassword });
     if (!parsed.success) {
-      setErrors(isIt ? "Controlla i dati inseriti." : "Please check your input.");
-      // best-effort: map zod errors to fields
+      setErrors(t("errors.checkInput"));
       const nextFieldErrors: Record<string, string[]> = {};
       for (const issue of parsed.error.issues) {
         const key = String(issue.path?.[0] ?? "");
@@ -168,27 +142,27 @@ export default function ForgotPasswordPage() {
     setPending(true);
     try {
       await resetPassword(email, parsed.data.otpCode, parsed.data.newPassword);
-      toast(isIt ? "Password aggiornata" : "Password updated");
+      toast(t("toast.passwordUpdated"));
       router.push(backToLoginHref);
-    } catch (e: unknown) {
-      const err = e as ApiError;
+    } catch (error: unknown) {
+      const err = error as ApiError;
 
       if (err?.status === 401) {
-        setErrors(isIt ? "Codice non valido o scaduto." : "Invalid or expired code.");
+        setErrors(t("errors.invalidOrExpiredCode"));
       } else if (err?.status === 403) {
-        setErrors(isIt ? "Account disabilitato/eliminato." : "Account disabled/deleted.");
+        setErrors(t("errors.accountDisabled"));
       } else if (err?.status === 429) {
         const retryAfter = getRetryAfterSeconds(err) ?? 60;
         setRateLimitUntil(Date.now() + retryAfter * 1000);
-        setErrors(isIt ? `Troppi tentativi. Riprova tra ${retryAfter}s.` : `Too many attempts. Try again in ${retryAfter}s.`);
+        setErrors(t("errors.tooManyAttempts", { seconds: retryAfter }));
       } else if (err?.status === 422) {
         const fe = getProblemDetailsFieldErrors(err.details);
         setFieldErrors(fe);
-        setErrors(isIt ? "Correggi i campi evidenziati." : "Please fix the highlighted fields.");
+        setErrors(t("errors.fixHighlightedFields"));
       } else if (err?.status === 400 && err?.code) {
         setErrors(friendly400(err));
       } else {
-        setErrors(err?.message ?? (isIt ? "Impossibile aggiornare la password." : "Unable to reset password."));
+        setErrors(err?.message ?? t("errors.resetFailed"));
       }
     } finally {
       setPending(false);
@@ -197,24 +171,20 @@ export default function ForgotPasswordPage() {
 
   return (
     <main className="mx-auto max-w-sm p-6">
-      <h1 className="mb-2 text-2xl font-bold">{isIt ? "Password dimenticata" : "Forgot password"}</h1>
-      <p className="mb-4 text-sm text-muted-foreground">
-        {isIt
-          ? "Riceverai un codice via email e potrai impostare una nuova password."
-          : "You'll receive a code by email and you can set a new password."}
-      </p>
+      <h1 className="mb-2 text-2xl font-bold">{t("title")}</h1>
+      <p className="mb-4 text-sm text-muted-foreground">{t("description")}</p>
 
       {step === "request" ? (
         <form onSubmit={onRequestCode} className="space-y-3">
           <div>
-            <label className="mb-1 block text-sm">Email</label>
+            <label className="mb-1 block text-sm">{common("email")}</label>
             <Input
               name="email"
               type="email"
               required
               maxLength={254}
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              onChange={(event) => setEmail(event.target.value)}
               disabled={pending}
             />
             {fieldErrors.email?.[0] && <p className="text-sm text-destructive">{fieldErrors.email[0]}</p>}
@@ -223,75 +193,65 @@ export default function ForgotPasswordPage() {
           {info && <p className="text-sm text-muted-foreground">{info}</p>}
           {isRateLimited && (
             <p className="text-sm text-muted-foreground">
-              {isIt ? `Attendi ${rateLimitSecondsLeft}s prima di riprovare.` : `Wait ${rateLimitSecondsLeft}s before retrying.`}
+              {t("errors.waitBeforeRetry", { seconds: rateLimitSecondsLeft })}
             </p>
           )}
           {errors && <p className="text-sm text-destructive">{errors}</p>}
 
           <Button type="submit" disabled={pending || isRateLimited}>
-            {pending
-              ? isIt
-                ? "Invio..."
-                : "Sending..."
-              : isIt
-                ? "Richiedi codice"
-                : "Request code"}
+            {pending ? t("sendLoading") : t("requestCode")}
           </Button>
 
           <div className="pt-1 text-sm">
             <Link href={backToLoginHref} className="text-muted-foreground hover:underline">
-              {isIt ? "Torna al login" : "Back to login"}
+              {t("backToLogin")}
             </Link>
           </div>
         </form>
       ) : (
         <form onSubmit={onReset} className="space-y-3">
           <div>
-            <label className="mb-1 block text-sm">Email</label>
+            <label className="mb-1 block text-sm">{common("email")}</label>
             <Input name="email" type="email" value={email} disabled />
           </div>
 
           <div>
-            <label className="mb-1 block text-sm">OTP</label>
+            <label className="mb-1 block text-sm">{common("otp")}</label>
             <Input
               name="otpCode"
               inputMode="numeric"
               autoComplete="one-time-code"
-              placeholder={isIt ? "6 cifre" : "6 digits"}
+              placeholder={t("codePlaceholder")}
               value={otpCode}
-              onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+              onChange={(event) => setOtpCode(event.target.value.replace(/\D/g, "").slice(0, 6))}
               disabled={pending}
             />
             {fieldErrors.otpCode?.[0] && <p className="text-sm text-destructive">{fieldErrors.otpCode[0]}</p>}
           </div>
 
           <div>
-            <label className="mb-1 block text-sm">{isIt ? "Nuova password" : "New password"}</label>
+            <label className="mb-1 block text-sm">{t("newPassword")}</label>
             <Input
               name="newPassword"
               type="password"
               autoComplete="new-password"
               value={newPassword}
-              onChange={(e) => setNewPassword(e.target.value)}
+              onChange={(event) => setNewPassword(event.target.value)}
               disabled={pending}
             />
             {fieldErrors.newPassword?.[0] && <p className="text-sm text-destructive">{fieldErrors.newPassword[0]}</p>}
             <PasswordStrengthIndicator password={newPassword} locale={locale} />
-            <p className="mt-1 text-xs text-muted-foreground">
-              {isIt
-                ? "Requisiti: almeno 8 caratteri, 1 numero, 1 carattere speciale."
-                : "Requirements: at least 8 characters, 1 number, 1 special character."}
-            </p>
+            <p className="mt-1 text-xs text-muted-foreground">{t("passwordRequirements")}</p>
           </div>
 
           <div>
-            <label className="mb-1 block text-sm">{isIt ? "Conferma nuova password" : "Confirm new password"}</label>
+            <label className="mb-1 block text-sm">{t("confirmNewPassword")}</label>
             <Input
               name="confirmNewPassword"
               type="password"
               autoComplete="new-password"
               value={confirmNewPassword}
-              onChange={(e) => setConfirmNewPassword(e.target.value)}
+              onChange={(event) => setConfirmNewPassword(event.target.value)}
               disabled={pending}
             />
             {fieldErrors.confirmNewPassword?.[0] && (
@@ -302,19 +262,13 @@ export default function ForgotPasswordPage() {
           {info && <p className="text-sm text-muted-foreground">{info}</p>}
           {isRateLimited && (
             <p className="text-sm text-muted-foreground">
-              {isIt ? `Attendi ${rateLimitSecondsLeft}s prima di riprovare.` : `Wait ${rateLimitSecondsLeft}s before retrying.`}
+              {t("errors.waitBeforeRetry", { seconds: rateLimitSecondsLeft })}
             </p>
           )}
           {errors && <p className="text-sm text-destructive">{errors}</p>}
 
           <Button type="submit" disabled={pending || isRateLimited}>
-            {pending
-              ? isIt
-                ? "Aggiornamento..."
-                : "Updating..."
-              : isIt
-                ? "Aggiorna password"
-                : "Update password"}
+            {pending ? t("updateLoading") : t("updatePassword")}
           </Button>
 
           <Button
@@ -328,7 +282,7 @@ export default function ForgotPasswordPage() {
               setConfirmNewPassword("");
             }}
           >
-            {isIt ? "Cambia email" : "Change email"}
+            {t("changeEmail")}
           </Button>
         </form>
       )}

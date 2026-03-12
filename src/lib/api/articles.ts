@@ -1,4 +1,5 @@
 import { API_BASE } from "@/lib/api/client";
+import { requestJson } from "@/lib/api/request";
 
 export type ArticleDto = {
   articleId: number;
@@ -17,12 +18,5 @@ export async function getArticlePublic(articleId: number): Promise<ArticleDto> {
   const isBrowser = typeof window !== "undefined";
   const url = isBrowser ? `/api/articles/${articleId}` : `${API_BASE}/api/articles/${articleId}`;
 
-  const res = await fetch(url, { method: "GET", cache: "no-store" });
-
-  if (!res.ok) {
-    const text = await res.text().catch(() => "");
-    throw new Error(text || `GET /api/articles/${articleId} failed: ${res.status}`);
-  }
-
-  return res.json();
+  return requestJson<ArticleDto>(url, { method: "GET", cache: "no-store" });
 }

@@ -1,4 +1,5 @@
 import { getArticlePublic } from "@/lib/api/articles";
+import { requestJson } from "@/lib/api/request";
 
 export type ArticleSearchItem = {
   articleId: number;
@@ -64,18 +65,12 @@ export async function searchArticles(args: {
   url.searchParams.set("page", String(page));
   url.searchParams.set("pageSize", String(pageSize));
 
-  const res = await fetch(url.toString(), {
+  const data = await requestJson<ArticleSearchResponse>(url.toString(), {
     method: "GET",
-    headers: args.accessToken ? { Authorization: `Bearer ${args.accessToken}` } : undefined,
+    accessToken: args.accessToken,
     credentials: "include",
   });
 
-  if (!res.ok) {
-    const text = await res.text().catch(() => "");
-    throw new Error(text || `GET /api/articles/search failed: ${res.status}`);
-  }
-
-  const data = (await res.json()) as ArticleSearchResponse;
   return {
     ...data,
     items: await enrichSearchItemsWithSourceUrl(data.items),

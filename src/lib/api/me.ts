@@ -1,5 +1,6 @@
-import { ApiError, parseApiError } from "@/lib/api/errors";
+import { ApiError } from "@/lib/api/errors";
 import { getCsrfHeaderValue } from "@/lib/api/auth";
+import { requestJson, requestVoid } from "@/lib/api/request";
 import type {
   UserProfileDto,
   UpdateMyProfileRequest,
@@ -8,78 +9,54 @@ import type {
 
 export { ApiError };
 
-async function authFetch(
-  input: string,
-  init: RequestInit,
-  accessToken: string,
-  options?: { csrf?: boolean }
-) {
-  const headers = new Headers(init.headers ?? {});
-  headers.set("Authorization", `Bearer ${accessToken}`);
-
-  if (options?.csrf) {
-    const csrf = await getCsrfHeaderValue();
-    if (csrf) {
-      headers.set("X-CSRF-TOKEN", csrf);
-    }
+async function buildRequestHeaders(csrf?: boolean): Promise<HeadersInit | undefined> {
+  if (!csrf) {
+    return undefined;
   }
 
-  const res = await fetch(input, {
-    ...init,
-    headers,
-  });
-
-  if (!res.ok) {
-    throw await parseApiError(res);
+  const csrfToken = await getCsrfHeaderValue();
+  if (!csrfToken) {
+    return undefined;
   }
 
-  return res;
+  return { "X-CSRF-TOKEN": csrfToken };
 }
 
 export async function getMe(accessToken: string): Promise<UserProfileDto> {
-  const res = await authFetch(`/api/me`, { method: "GET" }, accessToken);
-  return (await res.json()) as UserProfileDto;
+  return requestJson<UserProfileDto>("/api/me", {
+    method: "GET",
+    accessToken,
+  });
 }
 
 export async function patchMe(
   body: UpdateMyProfileRequest,
   accessToken: string
 ): Promise<UserProfileDto> {
-  const res = await authFetch(
-    `/api/me`,
-    {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    },
+  return requestJson<UserProfileDto>("/api/me", {
+    method: "PATCH",
+    body,
     accessToken,
-    { csrf: true }
-  );
-
-  return (await res.json()) as UserProfileDto;
+    headers: await buildRequestHeaders(true),
+  });
 }
 
 export async function changeMyPassword(
   body: ChangeMyPasswordRequest,
   accessToken: string
 ): Promise<void> {
-  await authFetch(
-    `/api/me/change-password`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    },
+  await requestVoid("/api/me/change-password", {
+    method: "POST",
+    body,
     accessToken,
-    { csrf: true }
-  );
+    headers: await buildRequestHeaders(true),
+  });
 }
 
 export async function deleteMe(accessToken: string): Promise<void> {
-  await authFetch(
-    `/api/me`,
-    { method: "DELETE" },
+  await requestVoid("/api/me", {
+    method: "DELETE",
     accessToken,
-    { csrf: true }
-  );
+    headers: await buildRequestHeaders(true),
+  });
 }

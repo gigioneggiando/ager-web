@@ -1,11 +1,429 @@
 {
   "app": { "title": "Ager" },
+  "common": {
+    "email": "Email",
+    "otp": "OTP",
+    "password": "Password",
+    "username": "Username",
+    "cancel": "Annulla",
+    "or": "Oppure",
+    "search": "Cerca"
+  },
   "nav": { "feed": "Feed", "lists": "Liste", "profile": "Profilo" },
   "action": { "save": "Salva", "like": "Mi piace", "hide": "Nascondi" },
   "empty": { "noResults": "Non c'è ancora nulla da vedere" },
+  "search": {
+    "header": {
+      "placeholder": "Cerca articoli…",
+      "ariaLabel": "Cerca"
+    },
+    "tagBar": {
+      "title": "Tag",
+      "loading": "Caricamento…",
+      "selectedTagAriaLabel": "Tag selezionato: {name}. Cambia tag.",
+      "fallbackNote": "Impossibile caricare i tag dal server: mostro un set minimo."
+    },
+    "resultRow": {
+      "like": "Mi piace",
+      "save": "Salva",
+      "saveTo": "Salva in…",
+      "share": "Condividi",
+      "hide": "Nascondi",
+      "notInterested": "Non mi interessa"
+    },
+    "page": {
+      "title": "Cerca",
+      "description": "Ricerca full-text tra gli articoli.",
+      "queryPlaceholder": "Es: aggiornamenti ucraina",
+      "perPage": "Per pagina:",
+      "emptyPrompt": "Inserisci una query o seleziona un tag.",
+      "searching": "Ricerca in corso…",
+      "invalidTagToast": "Tag non valido",
+      "loadTagsErrorToast": "Errore caricando i tag",
+      "searchFailedToast": "Errore durante la ricerca",
+      "invalidTag": "Tag non valido.",
+      "searchFailed": "Errore durante la ricerca.",
+      "requestRetryHint": "Impossibile completare la richiesta. Riprova tra poco.",
+      "noResults": "Nessun risultato.",
+      "results": "Risultati: {total}",
+      "pageOf": "Pagina {page} di {totalPages}",
+      "previous": "Precedente",
+      "next": "Successiva",
+      "fallbackTagNames": {
+        "tech": "Tecnologia",
+        "business": "Business",
+        "design": "Design",
+        "ai": "AI"
+      }
+    },
+    "explore": {
+      "title": "Esplora",
+      "description": "Cerca e scopri articoli per tag.",
+      "queryPlaceholder": "Cerca…",
+      "emptyPrompt": "Seleziona un topic per esplorare gli articoli.",
+      "loading": "Caricamento articoli…",
+      "noResults": "Nessun articolo per questo topic.",
+      "results": "Risultati: {total}",
+      "pageOf": "Pagina {page} di {totalPages}",
+      "previous": "Precedente",
+      "next": "Successiva",
+      "loadTagsErrorToast": "Errore caricando i tag",
+      "loadArticlesErrorToast": "Errore caricando gli articoli",
+      "fallbackTagNames": {
+        "tech": "Tecnologia",
+        "business": "Business",
+        "design": "Design",
+        "ai": "AI"
+      }
+    }
+  },
+  "articleDetail": {
+    "backToSearch": "Torna alla ricerca",
+    "languageLabel": "Lingua",
+    "languageNames": {
+      "it": "Italiano",
+      "en": "Inglese"
+    },
+    "actions": {
+      "openArticle": "Apri articolo",
+      "copyLink": "Copia link",
+      "linkCopied": "Link copiato",
+      "copyFailed": "Impossibile copiare il link"
+    }
+  },
+  "layout": {
+    "header": {
+      "homeAriaLabel": "Home Ager",
+      "menuAriaLabel": "Menu",
+      "notificationsComingSoon": "Notifiche: presto disponibili",
+      "profile": "Profilo",
+      "settings": "Impostazioni",
+      "logout": "Esci",
+      "signIn": "Accedi"
+    },
+    "mobileNav": {
+      "feed": "Feed",
+      "explore": "Esplora",
+      "lists": "Liste",
+      "profile": "Profilo"
+    },
+    "sidebar": {
+      "ariaLabel": "Sezioni",
+      "forYou": "Per te",
+      "latest": "Ultimi",
+      "top": "Top",
+      "explore": "Esplora",
+      "lists": "Liste"
+    }
+  },
+  "lists": {
+    "addDialog": {
+      "title": "Salva in una lista",
+      "description": "Scegli una delle tue liste di lettura per salvare:",
+      "loading": "Caricamento liste…",
+      "loadError": "Errore nel caricare le liste.",
+      "empty": "Non hai ancora creato nessuna lista. Crea una lista dalla sezione “Liste”.",
+      "listLabel": "Lista",
+      "selectList": "Seleziona una lista…",
+      "selectListTitle": "Seleziona una lista",
+      "selectListDescription": "Scegli una lista in cui salvare l'articolo.",
+      "itemsCount": "({count} articoli)",
+      "noteLabel": "Nota (opzionale)",
+      "notePlaceholder": "Aggiungi un appunto per ricordarti perché hai salvato questo articolo…",
+      "saved": "Articolo salvato",
+      "savedInList": "Aggiunto a “{name}”.",
+      "savedGeneric": "Aggiunto alla lista selezionata.",
+      "errorTitle": "Errore",
+      "saveFailed": "Impossibile salvare l'articolo nella lista.",
+      "saving": "Salvataggio…"
+    },
+    "createDialog": {
+      "trigger": "Nuova lista",
+      "title": "Crea una nuova lista",
+      "description": "Raccogli gli articoli che vuoi leggere o tenere da parte.",
+      "nameLabel": "Nome",
+      "namePlaceholder": "Es. Da leggere questa settimana",
+      "nameRequiredTitle": "Nome obbligatorio",
+      "nameRequiredDescription": "Per favore inserisci un nome per la lista.",
+      "descriptionLabel": "Descrizione (opzionale)",
+      "descriptionPlaceholder": "A cosa serve questa lista?",
+      "visibilityLabel": "Visibilità",
+      "visibilityHint": "Puoi sempre cambiare questa impostazione in futuro (quando implementeremo l’editing).",
+      "private": "Privata",
+      "public": "Pubblica",
+      "created": "Lista creata",
+      "createdPublic": "La lista è pubblica.",
+      "createdPrivate": "La lista è privata.",
+      "errorTitle": "Errore",
+      "createFailed": "Impossibile creare la lista in questo momento.",
+      "create": "Crea"
+    },
+    "page": {
+      "title": "Le tue liste",
+      "empty": "Non hai ancora creato nessuna lista.",
+      "loading": "Caricamento…",
+      "loadError": "Errore nel caricare le liste.",
+      "openListAriaLabel": "Apri lista {name}",
+      "itemsCount": "{count} articoli",
+      "deleteConfirm": "Sei sicuro di voler eliminare questa lista?",
+      "deleted": "Lista eliminata",
+      "errorTitle": "Errore",
+      "deleteFailed": "Impossibile eliminare la lista",
+      "deleteAriaLabel": "Elimina lista",
+      "loadMore": "Carica altri",
+      "visibility": {
+        "public": "Pubblica",
+        "shared": "Condivisa",
+        "private": "Privata"
+      }
+    },
+    "detail": {
+      "invalidId": "ID lista non valido.",
+      "backToAll": "Tutte le liste",
+      "fallbackTitle": "Lista",
+      "createdOn": "Creata il ",
+      "loading": "Caricamento…",
+      "loadError": "Errore nel caricare gli articoli.",
+      "empty": "Nessun articolo in questa lista.",
+      "removeConfirm": "Rimuovere questo articolo dalla lista?",
+      "removed": "Articolo rimosso dalla lista",
+      "errorTitle": "Errore",
+      "removeFailed": "Impossibile rimuovere l'articolo",
+      "remove": "Rimuovi",
+      "loadMore": "Carica altri"
+    }
+  },
+  "interactions": {
+    "authRequiredTitle": "Accedi per continuare",
+    "authRequiredDescription": "Devi essere autenticato per usare questa azione.",
+    "scheduledDescription": "Azione programmata. Annulla?",
+    "undo": "Annulla",
+    "likeScheduled": "Mi piace",
+    "saveScheduled": "Salvato",
+    "hidden": "Articolo nascosto",
+    "hiddenDescription": "Annulla per ripristinare l'articolo",
+    "reported": "Segnalato",
+    "reportedDescription": "Grazie per la tua segnalazione."
+  },
+  "profile": {
+    "title": "Profilo",
+    "loading": "Caricamento profilo…",
+    "loadErrorPrefix": "Errore nel caricare il profilo: ",
+    "fixHighlightedFields": "Correggi i campi evidenziati",
+    "profileUpdated": "Profilo aggiornato",
+    "forbiddenTitle": "Operazione non consentita (CSRF).",
+    "tooManyAttempts": "Troppi tentativi",
+    "retryAfter": "Riprova tra {seconds}s.",
+    "errorTitle": "Errore",
+    "fillAllFields": "Compila tutti i campi",
+    "passwordMismatch": "Le password non coincidono",
+    "passwordUpdated": "Password aggiornata",
+    "validationErrorTitle": "Errore validazione",
+    "deleteConfirm": "Vuoi eliminare il tuo account? L’operazione è irreversibile.",
+    "accountDeleted": "Account eliminato",
+    "createdAt": "Creato: ",
+    "updatedAt": "Aggiornato: ",
+    "saveChanges": "Salva modifiche",
+    "saving": "Salvataggio…",
+    "changePassword": "Cambia password",
+    "oldPassword": "Password attuale",
+    "newPassword": "Nuova password",
+    "passwordRequirements": "Requisiti: almeno 8 caratteri, 1 numero, 1 carattere speciale.",
+    "confirmNewPassword": "Conferma nuova password",
+    "updatePassword": "Aggiorna password",
+    "updating": "Aggiornamento…",
+    "dangerZone": "Zona pericolosa",
+    "dangerDescription": "Eliminando l’account, i tuoi dati verranno disattivati (soft-delete).",
+    "deleteAccount": "Elimina il mio account",
+    "deleting": "Eliminazione…",
+    "fields": {
+      "username": "Username",
+      "usernamePlaceholder": "Il tuo username",
+      "avatarUrl": "Avatar URL",
+      "language": "Lingua",
+      "timezone": "Timezone"
+    },
+    "validation": {
+      "usernameMax": "Massimo 30 caratteri.",
+      "avatarUrlMax": "Massimo 255 caratteri.",
+      "localeMax": "Massimo 10 caratteri.",
+      "timezoneMax": "Massimo 50 caratteri."
+    },
+    "errors": {
+      "unexpected": "Errore imprevisto.",
+      "unauthorized": "Sessione scaduta. Effettua di nuovo l’accesso.",
+      "userNotFound": "Utente non trovato.",
+      "userDeleted": "Account disattivato.",
+      "usernameTooLong": "Username troppo lungo.",
+      "usernameTaken": "Username già in uso.",
+      "passwordNotSet": "Questo account non ha una password impostata.",
+      "invalidOldPassword": "La vecchia password non è corretta.",
+      "csrfFailed": "Sessione non valida. Ricarica la pagina e riprova."
+    }
+  },
+  "auth": {
+    "passwordStrength": {
+      "veryWeak": "Molto debole",
+      "weak": "Debole",
+      "fair": "Media",
+      "strong": "Forte",
+      "veryStrong": "Molto forte"
+    },
+    "oauth": {
+      "errorTitle": "Errore",
+      "signInFailed": "Accesso non riuscito.",
+      "googleNotConfiguredTitle": "Google non configurato",
+      "googleNotConfiguredDescription": "Imposta NEXT_PUBLIC_GOOGLE_CLIENT_ID",
+      "googleUnavailableTitle": "Google non disponibile",
+      "googleUnavailableDescription": "Riprova tra poco o aggiorna la pagina.",
+      "appleNotConfiguredTitle": "Apple non configurato",
+      "appleNotConfiguredDescription": "Imposta NEXT_PUBLIC_APPLE_CLIENT_ID e NEXT_PUBLIC_APPLE_REDIRECT_URI",
+      "appleUnavailable": "Apple non disponibile",
+      "googleMissingToken": "Token Google mancante",
+      "appleMissingToken": "Token Apple mancante",
+      "continueWithGoogle": "Continua con Google",
+      "continueWithApple": "Continua con Apple",
+      "signingInWithApple": "Accesso con Apple…",
+      "missingEmailDescription": "{provider} non ha condiviso la tua email. Per continuare, accedi con OTP via email.",
+      "signInWithEmailCode": "Accedi con OTP via email"
+    },
+    "restoreDialog": {
+      "title": "Ripristina account",
+      "description": "Inserisci email e verifica con OTP per ripristinare l’account eliminato.",
+      "enterEmail": "Inserisci l’email",
+      "enterSixDigitCode": "Inserisci un codice di 6 cifre",
+      "requestSuccess": "Se l'account esiste, abbiamo inviato un codice",
+      "restoredTitle": "Account ripristinato",
+      "restoredDescription": "Ora puoi effettuare il login.",
+      "emailPlaceholder": "name@example.com",
+      "requestCode": "Richiedi codice",
+      "restore": "Ripristina",
+      "resend": "Invia di nuovo",
+      "sending": "Invio…",
+      "errors": {
+        "userNotFound": "Utente non trovato.",
+        "invalidOtp": "Codice non valido o scaduto.",
+        "accountNotDeleted": "L’account non risulta eliminato.",
+        "fallback": "Impossibile ripristinare l’account."
+      }
+    },
+    "login": {
+      "title": "Accedi",
+      "description": "Continua con email e codice, oppure con password.",
+      "fallbackExternalEmailMissing": "Apple/Google non ha condiviso la tua email. Per continuare, accedi con OTP via email.",
+      "codePlaceholder": "6 cifre",
+      "requestCode": "Richiedi codice",
+      "verify": "Verifica",
+      "resend": "Invia di nuovo",
+      "changeEmail": "Cambia email",
+      "useCodeInstead": "Accedi con codice invece",
+      "usePasswordInstead": "Accedi con password invece",
+      "forgotPassword": "Password dimenticata?",
+      "noAccount": "Non hai un account?",
+      "signUp": "Registrati",
+      "sendLoading": "Invio...",
+      "verifyLoading": "Verifica...",
+      "signInLoading": "Accesso...",
+      "info": {
+        "codeSent": "Se l’account esiste riceverai un codice via email."
+      },
+      "errors": {
+        "invalidEmail": "Inserisci una email valida.",
+        "invalidCode": "Inserisci un codice di 6 cifre.",
+        "invalidCredentials": "Credenziali non valide.",
+        "sendCodeFailed": "Impossibile inviare il codice.",
+        "signInFailed": "Impossibile effettuare il login.",
+        "enterEmail": "Inserisci la tua email.",
+        "enterPassword": "Inserisci la password.",
+        "checkInput": "Controlla i dati inseriti.",
+        "tooManyAttempts": "Troppi tentativi. Riprova tra {seconds}s.",
+        "waitBeforeRetry": "Attendi {seconds}s prima di riprovare."
+      }
+    },
+    "register": {
+      "title": "Crea account",
+      "description": "Riceverai un codice via email per completare la registrazione.",
+      "codePlaceholder": "6 cifre",
+      "optionalPassword": "(opzionale)",
+      "requestCode": "Richiedi codice",
+      "verify": "Verifica",
+      "resend": "Invia di nuovo",
+      "editDetails": "Modifica dati",
+      "alreadyHaveAccount": "Hai già un account?",
+      "signIn": "Accedi",
+      "backHome": "Torna alla home",
+      "sendLoading": "Invio...",
+      "verifyLoading": "Verifica...",
+      "passwordHint": "Se la imposti: almeno 8 caratteri, 1 numero, 1 carattere speciale.",
+      "info": {
+        "codeSent": "Ti abbiamo inviato un codice via email."
+      },
+      "errors": {
+        "checkInput": "Controlla i dati inseriti.",
+        "tooManyAttempts": "Troppi tentativi. Riprova tra {seconds}s.",
+        "waitBeforeRetry": "Attendi {seconds}s prima di riprovare.",
+        "temporaryEmail": "Gli indirizzi email temporanei non sono consentiti.",
+        "emailAlreadyRegistered": "Email già registrata.",
+        "usernameAlreadyTaken": "Username già in uso.",
+        "registrationUnavailable": "Registrazione non disponibile.",
+        "sendCodeFailed": "Impossibile inviare il codice.",
+        "invalidOrExpiredCode": "Codice non valido o scaduto.",
+        "usernameMismatch": "Lo username non coincide con la richiesta codice (usa lo stesso dello step precedente).",
+        "fixHighlightedFields": "Correggi i campi evidenziati.",
+        "registerFailed": "Registrazione fallita."
+      }
+    },
+    "forgotPassword": {
+      "title": "Password dimenticata",
+      "description": "Riceverai un codice via email e potrai impostare una nuova password.",
+      "newPassword": "Nuova password",
+      "confirmNewPassword": "Conferma nuova password",
+      "requestCode": "Richiedi codice",
+      "updatePassword": "Aggiorna password",
+      "backToLogin": "Torna al login",
+      "changeEmail": "Cambia email",
+      "codePlaceholder": "6 cifre",
+      "sendLoading": "Invio...",
+      "updateLoading": "Aggiornamento...",
+      "passwordRequirements": "Requisiti: almeno 8 caratteri, 1 numero, 1 carattere speciale.",
+      "info": {
+        "codeSent": "Se l’account esiste riceverai un codice via email."
+      },
+      "toast": {
+        "passwordUpdated": "Password aggiornata"
+      },
+      "errors": {
+        "invalidEmail": "Inserisci una email valida.",
+        "tooManyAttempts": "Troppi tentativi. Riprova tra {seconds}s.",
+        "waitBeforeRetry": "Attendi {seconds}s prima di riprovare.",
+        "sendCodeFailed": "Impossibile inviare il codice.",
+        "invalidPassword": "Password non valida.",
+        "invalidCode": "Codice non valido.",
+        "invalidEmailValue": "Email non valida.",
+        "invalidRequest": "Richiesta non valida.",
+        "checkInput": "Controlla i dati inseriti.",
+        "invalidOrExpiredCode": "Codice non valido o scaduto.",
+        "accountDisabled": "Account disabilitato/eliminato.",
+        "fixHighlightedFields": "Correggi i campi evidenziati.",
+        "resetFailed": "Impossibile aggiornare la password."
+      }
+    },
+    "passwordRules": {
+      "minLength": "Minimo 8 caratteri.",
+      "number": "Deve contenere almeno un numero.",
+      "special": "Deve contenere almeno un carattere speciale (es. !@#).",
+      "invalid": "Password non valida.",
+      "mismatch": "Le password non coincidono."
+    }
+  },
   "feed": {
     "tabs": { "latest": "Ultimi", "top": "Top", "following": "Seguiti" },
     "topics": { "all": "Tutti", "tech": "Tecnologia", "business": "Business", "design": "Design", "ai": "AI" },
-    "allCaughtUp": "Hai visto tutto 🎉"
+    "allCaughtUp": "Hai visto tutto 🎉",
+    "card": {
+      "topicSearchAriaLabel": "Cerca: {topic}",
+      "linkCopied": "Link copiato",
+      "shareFailed": "Impossibile condividere"
+    }
   }
 }

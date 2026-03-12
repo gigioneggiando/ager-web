@@ -1,4 +1,5 @@
 import { API_BASE } from "./client";
+import { requestMaybeJson } from "@/lib/api/request";
 
 /** String variants we use in the UI */
 export type InteractionKind = "LIKE" | "SAVE" | "DISCARD" | "REPORT";
@@ -32,26 +33,10 @@ export async function postInteraction(
     ...(body.reason ? { Reason: body.reason } : {}),
   };
 
-  const res = await fetch(`${API_BASE}/api/interactions`, {
+  return requestMaybeJson(`${API_BASE}/api/interactions`, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
-    },
+    accessToken,
     credentials: "include",
-    body: JSON.stringify(payload),
+    body: payload,
   });
-
-  if (!res.ok) {
-    const text = await res.text().catch(() => "");
-    throw new Error(text || `POST /api/interactions failed: ${res.status}`);
-  }
-
-  // Your handler returns Result.Success(); often with empty body (200/204).
-  // Be resilient to both JSON and empty responses.
-  const ct = res.headers.get("content-type");
-  if (res.status === 204 || !ct || !ct.includes("application/json")) {
-    return null;
-  }
-  return res.json().catch(() => null);
 }

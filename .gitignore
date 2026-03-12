@@ -39,3 +39,10 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# local AI / Codex working files
+.codex/
+.github/AGENTS.md
+.github/copilot-instructions.md
+.github/prompts/
+docs/ai-context/

@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -11,32 +12,26 @@ import { useMeQuery, useUpdateMe, useChangePassword, useDeleteMe } from "@/featu
 import type { UpdateMyProfileRequest } from "@/lib/api/me.types";
 import { ApiError } from "@/lib/api/me";
 import { getProblemDetailsFieldErrors, getRetryAfterSeconds } from "@/lib/api/errors";
-import { getPasswordRuleIssues } from "@/lib/validation/password";
+import { getFirstPasswordRuleMessage } from "@/lib/validation/passwordMessages";
 import PasswordStrengthIndicator from "@/components/auth/PasswordStrengthIndicator";
+import { useAppLocale } from "@/i18n/useAppLocale";
 
-function msg(code: string | undefined, locale: "it" | "en") {
-  const it: Record<string, string> = {
-    unauthorized: "Sessione scaduta. Effettua di nuovo l’accesso.",
-    user_not_found: "Utente non trovato.",
-    user_deleted: "Account disattivato.",
-    username_too_long: "Username troppo lungo.",
-    username_taken: "Username già in uso.",
-    password_not_set: "Questo account non ha una password impostata.",
-    invalid_old_password: "La vecchia password non è corretta.",
-    csrf_failed: "Sessione non valida. Ricarica la pagina e riprova."
+function errorMessage(code: string | undefined, t: ReturnType<typeof useTranslations<"profile">>) {
+  if (!code) return t("errors.unexpected");
+
+  const keyByCode: Record<string, Parameters<typeof t>[0]> = {
+    unauthorized: "errors.unauthorized",
+    user_not_found: "errors.userNotFound",
+    user_deleted: "errors.userDeleted",
+    username_too_long: "errors.usernameTooLong",
+    username_taken: "errors.usernameTaken",
+    password_not_set: "errors.passwordNotSet",
+    invalid_old_password: "errors.invalidOldPassword",
+    csrf_failed: "errors.csrfFailed",
   };
-  const en: Record<string, string> = {
-    unauthorized: "Session expired. Please log in again.",
-    user_not_found: "User not found.",
-    user_deleted: "Account is disabled.",
-    username_too_long: "Username is too long.",
-    username_taken: "Username already taken.",
-    password_not_set: "This account has no password set.",
-    invalid_old_password: "Old password is incorrect.",
-    csrf_failed: "Invalid session state. Reload the page and retry."
-  };
-  if (!code) return locale === "it" ? "Errore imprevisto." : "Unexpected error.";
-  return (locale === "it" ? it[code] : en[code]) ?? code;
+
+  const key = keyByCode[code];
+  return key ? t(key) : code;
 }
 
 function computePatch(current: any, draft: any): UpdateMyProfileRequest {
@@ -50,7 +45,8 @@ function computePatch(current: any, draft: any): UpdateMyProfileRequest {
 }
 
 export default function ProfilePage() {
-  const { locale } = useParams() as { locale: "it" | "en" };
+  const t = useTranslations("profile");
+  const { locale } = useAppLocale();
   const router = useRouter();
 
   const me = useMeQuery();
@@ -82,10 +78,10 @@ export default function ProfilePage() {
   useEffect(() => {
     const err = me.error as any;
     if (err?.code === "unauthorized" || err?.message === "unauthorized") {
-      toast(msg("unauthorized", locale));
+      toast(t("errors.unauthorized"));
       router.replace(`/${locale}/login`);
     }
-  }, [me.error, locale, router]);
+  }, [locale, me.error, router, t]);
 
   const patch = useMemo(() => computePatch(me.data, {
     username: draft.username.trim(),
@@ -98,43 +94,43 @@ export default function ProfilePage() {
 
   async function onSaveProfile() {
     const nextFieldErrors: Record<string, string[]> = {};
-    if (draft.username.trim().length > 30) nextFieldErrors.username = [locale === "it" ? "Massimo 30 caratteri." : "Maximum 30 characters."];
-    if (draft.avatarUrl.trim().length > 255) nextFieldErrors.avatarUrl = [locale === "it" ? "Massimo 255 caratteri." : "Maximum 255 characters."];
-    if ((draft.locale ?? "").trim().length > 10) nextFieldErrors.locale = [locale === "it" ? "Massimo 10 caratteri." : "Maximum 10 characters."];
-    if (draft.timezone.trim().length > 50) nextFieldErrors.timezone = [locale === "it" ? "Massimo 50 caratteri." : "Maximum 50 characters."];
+    if (draft.username.trim().length > 30) nextFieldErrors.username = [t("validation.usernameMax")];
+    if (draft.avatarUrl.trim().length > 255) nextFieldErrors.avatarUrl = [t("validation.avatarUrlMax")];
+    if ((draft.locale ?? "").trim().length > 10) nextFieldErrors.locale = [t("validation.localeMax")];
+    if (draft.timezone.trim().length > 50) nextFieldErrors.timezone = [t("validation.timezoneMax")];
 
     setProfileFieldErrors(nextFieldErrors);
     if (Object.keys(nextFieldErrors).length > 0) {
-      toast(locale === "it" ? "Correggi i campi evidenziati" : "Fix highlighted fields");
+      toast(t("fixHighlightedFields"));
       return;
     }
 
     try {
       await update.mutateAsync(patch);
       setProfileFieldErrors({});
-      toast(locale === "it" ? "Profilo aggiornato" : "Profile updated");
+      toast(t("profileUpdated"));
     } catch (e) {
       const err = e as ApiError;
       if (err.status === 422) {
         setProfileFieldErrors(getProblemDetailsFieldErrors(err.details));
-        toast(locale === "it" ? "Correggi i campi evidenziati" : "Fix highlighted fields");
+        toast(t("fixHighlightedFields"));
         return;
       }
       if (err.status === 403) {
-        toast(locale === "it" ? "Operazione non consentita (CSRF)." : "Operation forbidden (CSRF).", {
-          description: msg(err.code, locale)
+        toast(t("forbiddenTitle"), {
+          description: errorMessage(err.code, t)
         });
         return;
       }
       if (err.status === 429) {
         const retryAfter = getRetryAfterSeconds(err) ?? 60;
-        toast(locale === "it" ? "Troppi tentativi" : "Too many attempts", {
-          description: locale === "it" ? `Riprova tra ${retryAfter}s.` : `Try again in ${retryAfter}s.`
+        toast(t("tooManyAttempts"), {
+          description: t("retryAfter", { seconds: retryAfter })
         });
         return;
       }
-      toast(locale === "it" ? "Errore" : "Error", {
-        description: msg(err.code, locale)
+      toast(t("errorTitle"), {
+        description: errorMessage(err.code, t)
       });
       if (err.code === "unauthorized") router.replace(`/${locale}/login`);
     }
@@ -142,86 +138,78 @@ export default function ProfilePage() {
 
   async function onChangePassword() {
     if (!pw.oldPassword || !pw.newPassword) {
-      toast(locale === "it" ? "Compila tutti i campi" : "Fill in all fields");
+      toast(t("fillAllFields"));
       return;
     }
 
-    const issues = getPasswordRuleIssues(pw.newPassword);
-    if (issues.length > 0) {
-      const first = issues[0];
-      const message =
-        first === "minLength"
-          ? (locale === "it" ? "Minimo 8 caratteri." : "At least 8 characters.")
-          : first === "number"
-            ? (locale === "it" ? "Deve contenere almeno un numero." : "Must include at least one number.")
-            : (locale === "it"
-                ? "Deve contenere almeno un carattere speciale (es. !@#)."
-                : "Must include at least one special character (e.g. !@#).");
+    const message = getFirstPasswordRuleMessage(pw.newPassword, {
+      minLength: t("passwordRequirements"),
+      number: t("passwordRequirements"),
+      special: t("passwordRequirements"),
+      invalid: t("passwordRequirements"),
+    });
+    if (message) {
       toast(message);
       return;
     }
     if (pw.newPassword !== pw.confirm) {
-      toast(locale === "it" ? "Le password non coincidono" : "Passwords do not match");
+      toast(t("passwordMismatch"));
       return;
     }
 
     try {
       await changePw.mutateAsync({ oldPassword: pw.oldPassword, newPassword: pw.newPassword });
-      toast(locale === "it" ? "Password aggiornata" : "Password updated");
+      toast(t("passwordUpdated"));
       setPw({ oldPassword: "", newPassword: "", confirm: "" });
     } catch (e) {
       const err = e as ApiError;
       if (err.status === 403) {
-        toast(locale === "it" ? "Operazione non consentita (CSRF)." : "Operation forbidden (CSRF).", {
-          description: msg(err.code, locale)
+        toast(t("forbiddenTitle"), {
+          description: errorMessage(err.code, t)
         });
         return;
       }
       if (err.status === 422) {
         const fieldErrors = getProblemDetailsFieldErrors(err.details);
-        toast(locale === "it" ? "Errore validazione" : "Validation error", {
-          description: Object.values(fieldErrors).flat()[0] ?? msg(err.code, locale)
+        toast(t("validationErrorTitle"), {
+          description: Object.values(fieldErrors).flat()[0] ?? errorMessage(err.code, t)
         });
         return;
       }
       if (err.status === 429) {
         const retryAfter = getRetryAfterSeconds(err) ?? 60;
-        toast(locale === "it" ? "Troppi tentativi" : "Too many attempts", {
-          description: locale === "it" ? `Riprova tra ${retryAfter}s.` : `Try again in ${retryAfter}s.`
+        toast(t("tooManyAttempts"), {
+          description: t("retryAfter", { seconds: retryAfter })
         });
         return;
       }
-      toast(locale === "it" ? "Errore" : "Error", {
-        description: msg(err.code, locale)
+      toast(t("errorTitle"), {
+        description: errorMessage(err.code, t)
       });
       if (err.code === "unauthorized") router.replace(`/${locale}/login`);
     }
   }
 
   async function onDeleteAccount() {
-    const ok = confirm(
-      locale === "it"
-        ? "Vuoi eliminare il tuo account? L’operazione è irreversibile."
-        : "Do you want to delete your account? This cannot be undone."
-    );
+    const ok = confirm(t("deleteConfirm"));
     if (!ok) return;
 
     try {
       await del.mutateAsync();
       // Clear cookies/session via your Next handler
       await fetch("/api/auth/logout", { method: "POST" }).catch(() => {});
-      toast(locale === "it" ? "Account eliminato" : "Account deleted");
+      toast(t("accountDeleted"));
       router.replace(`/${locale}/login`);
     } catch (e) {
       const err = e as ApiError;
       if (err.status === 403) {
-        toast(locale === "it" ? "Operazione non consentita (CSRF)." : "Operation forbidden (CSRF).", {
-          description: msg(err.code, locale)
+        toast(t("forbiddenTitle"), {
+          description: errorMessage(err.code, t)
         });
         return;
       }
-      toast(locale === "it" ? "Errore" : "Error", {
-        description: msg(err.code, locale)
+      toast(t("errorTitle"), {
+        description: errorMessage(err.code, t)
       });
       if (err.code === "unauthorized") router.replace(`/${locale}/login`);
     }
@@ -231,7 +219,7 @@ export default function ProfilePage() {
     return (
       <div className="mx-auto w-full max-w-3xl px-4 py-6">
         <div className="text-sm text-muted-foreground">
-          {locale === "it" ? "Caricamento profilo…" : "Loading profile…"}
+          {t("loading")}
         </div>
       </div>
     );
@@ -242,8 +230,8 @@ export default function ProfilePage() {
     return (
       <div className="mx-auto w-full max-w-3xl px-4 py-6">
         <div className="rounded border p-3 text-sm text-destructive">
-          {locale === "it" ? "Errore nel caricare il profilo: " : "Failed to load profile: "}
-          {msg(err.code, locale)}
+          {t("loadErrorPrefix")}
+          {errorMessage(err.code, t)}
         </div>
       </div>
     );
@@ -255,25 +243,25 @@ export default function ProfilePage() {
   return (
     <div className="mx-auto w-full max-w-3xl px-4 py-6 space-y-4">
       <h1 className="text-2xl font-semibold">
-        {locale === "it" ? "Profilo" : "Profile"}
+        {t("title")}
       </h1>
 
       <Card className="p-4 space-y-4">
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-2">
-            <Label htmlFor="username">{locale === "it" ? "Username" : "Username"}</Label>
+            <Label htmlFor="username">{t("fields.username")}</Label>
             <Input
               id="username"
               value={draft.username}
               onChange={(e) => setDraft((d) => ({ ...d, username: e.target.value }))}
-              placeholder={locale === "it" ? "Il tuo username" : "Your username"}
+              placeholder={t("fields.usernamePlaceholder")}
               maxLength={30}
             />
             {profileFieldErrors.username?.[0] && <p className="text-sm text-destructive">{profileFieldErrors.username[0]}</p>}
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="avatarUrl">{locale === "it" ? "Avatar URL" : "Avatar URL"}</Label>
+            <Label htmlFor="avatarUrl">{t("fields.avatarUrl")}</Label>
             <Input
               id="avatarUrl"
               value={draft.avatarUrl}
@@ -285,7 +273,7 @@ export default function ProfilePage() {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="locale">{locale === "it" ? "Lingua" : "Language"}</Label>
+            <Label htmlFor="locale">{t("fields.language")}</Label>
             <select
               id="locale"
               className="w-full rounded-md border bg-background px-3 py-2 text-sm"
@@ -299,7 +287,7 @@ export default function ProfilePage() {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="timezone">{locale === "it" ? "Timezone" : "Timezone"}</Label>
+            <Label htmlFor="timezone">{t("fields.timezone")}</Label>
             <Input
               id="timezone"
               value={draft.timezone}
@@ -313,8 +301,8 @@ export default function ProfilePage() {
 
         {(createdAt || updatedAt) && (
           <div className="text-xs text-muted-foreground">
-            {createdAt && <div>{locale === "it" ? "Creato: " : "Created: "}{createdAt}</div>}
-            {updatedAt && <div>{locale === "it" ? "Aggiornato: " : "Updated: "}{updatedAt}</div>}
+            {createdAt && <div>{t("createdAt")}{createdAt}</div>}
+            {updatedAt && <div>{t("updatedAt")}{updatedAt}</div>}
           </div>
         )}
 
@@ -324,20 +312,20 @@ export default function ProfilePage() {
             disabled={!hasChanges || update.isPending}
           >
             {update.isPending
-              ? (locale === "it" ? "Salvataggio…" : "Saving…")
-              : (locale === "it" ? "Salva modifiche" : "Save changes")}
+              ? t("saving")
+              : t("saveChanges")}
           </Button>
         </div>
       </Card>
 
       <Card className="p-4 space-y-4">
         <h2 className="text-lg font-semibold">
-          {locale === "it" ? "Cambia password" : "Change password"}
+          {t("changePassword")}
         </h2>
 
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-2 sm:col-span-2">
-            <Label htmlFor="oldPassword">{locale === "it" ? "Password attuale" : "Old password"}</Label>
+            <Label htmlFor="oldPassword">{t("oldPassword")}</Label>
             <Input
               id="oldPassword"
               type="password"
@@ -347,7 +335,7 @@ export default function ProfilePage() {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="newPassword">{locale === "it" ? "Nuova password" : "New password"}</Label>
+            <Label htmlFor="newPassword">{t("newPassword")}</Label>
             <Input
               id="newPassword"
               type="password"
@@ -356,14 +344,12 @@ export default function ProfilePage() {
             />
             <PasswordStrengthIndicator password={pw.newPassword} locale={locale} />
             <p className="text-xs text-muted-foreground">
-              {locale === "it"
-                ? "Requisiti: almeno 8 caratteri, 1 numero, 1 carattere speciale."
-                : "Requirements: at least 8 characters, 1 number, 1 special character."}
+              {t("passwordRequirements")}
             </p>
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="confirm">{locale === "it" ? "Conferma nuova password" : "Confirm new password"}</Label>
+            <Label htmlFor="confirm">{t("confirmNewPassword")}</Label>
             <Input
               id="confirm"
               type="password"
@@ -376,20 +362,18 @@ export default function ProfilePage() {
         <div className="flex justify-end">
           <Button onClick={onChangePassword} disabled={changePw.isPending}>
             {changePw.isPending
-              ? (locale === "it" ? "Aggiornamento…" : "Updating…")
-              : (locale === "it" ? "Aggiorna password" : "Update password")}
+              ? t("updating")
+              : t("updatePassword")}
           </Button>
         </div>
       </Card>
 
       <Card className="p-4 space-y-3 border-destructive/40">
         <h2 className="text-lg font-semibold text-destructive">
-          {locale === "it" ? "Zona pericolosa" : "Danger zone"}
+          {t("dangerZone")}
         </h2>
         <p className="text-sm text-muted-foreground">
-          {locale === "it"
-            ? "Eliminando l’account, i tuoi dati verranno disattivati (soft-delete)."
-            : "Deleting your account will deactivate your data (soft-delete)."}
+          {t("dangerDescription")}
         </p>
 
         <div className="flex justify-end">
@@ -399,8 +383,8 @@ export default function ProfilePage() {
             disabled={del.isPending}
           >
             {del.isPending
-              ? (locale === "it" ? "Eliminazione…" : "Deleting…")
-              : (locale === "it" ? "Elimina il mio account" : "Delete my account")}
+              ? t("deleting")
+              : t("deleteAccount")}
           </Button>
         </div>
       </Card>

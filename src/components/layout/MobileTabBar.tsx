@@ -1,20 +1,21 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useParams } from "next/navigation";
+import { useTranslations } from "next-intl";
+import { usePathname } from "next/navigation";
 import { Home, ListChecks, Search, User } from "lucide-react";
+import { useAppLocale } from "@/i18n/useAppLocale";
 
 export default function MobileTabBar() {
+  const t = useTranslations("layout.mobileNav");
   const pathname = usePathname();
-  const params = useParams() as { locale?: string };
-  const locale = params?.locale ?? "it";
-  const isIt = locale === "it";
+  const { locale } = useAppLocale();
 
   const items = [
-    { path: "/feed", label: isIt ? "Feed" : "Feed", Icon: Home },
-    { path: "/explore", label: isIt ? "Esplora" : "Explore", Icon: Search },
-    { path: "/lists", label: isIt ? "Liste" : "Lists", Icon: ListChecks },
-    { path: "/profile", label: isIt ? "Profilo" : "Profile", Icon: User },
+    { path: "/feed", label: t("feed"), Icon: Home },
+    { path: "/explore", label: t("explore"), Icon: Search },
+    { path: "/lists", label: t("lists"), Icon: ListChecks },
+    { path: "/profile", label: t("profile"), Icon: User },
   ];
 
   return (

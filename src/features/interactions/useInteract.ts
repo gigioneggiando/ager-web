@@ -2,7 +2,7 @@
 
 import { useMutation, useQueryClient, type InfiniteData } from "@tanstack/react-query";
 import { useRef } from "react";
-import { useParams } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { analytics } from "@/lib/analytics";
 import { useSession } from "@/lib/auth/session";
@@ -21,8 +21,7 @@ function isInfiniteData<T>(data: unknown): data is InfiniteData<T> {
  * - REPORT: immediate write
  */
 export function useInteract() {
-  const { locale } = useParams() as { locale?: "it" | "en" };
-  const isIt = locale !== "en";
+  const t = useTranslations("interactions");
 
   const { accessToken } = useSession();
   const qc = useQueryClient();
@@ -30,10 +29,8 @@ export function useInteract() {
 
   function requireAuth(): boolean {
     if (accessToken) return true;
-    toast(isIt ? "Accedi per continuare" : "Sign in to continue", {
-      description: isIt
-        ? "Devi essere autenticato per usare questa azione."
-        : "You need to be signed in to use this action.",
+    toast(t("authRequiredTitle"), {
+      description: t("authRequiredDescription"),
     });
     return false;
   }
@@ -73,10 +70,10 @@ export function useInteract() {
   function like(articleId: number) {
     if (!requireAuth()) return;
     delayCommit(articleId, () => commit.mutate({ articleId, type: "LIKE" }));
-    toast(isIt ? "Mi piace" : "Like", {
-      description: isIt ? "Azione programmata. Annulla?" : "Action scheduled. Undo?",
+    toast(t("likeScheduled"), {
+      description: t("scheduledDescription"),
       action: {
-        label: isIt ? "Annulla" : "Undo",
+        label: t("undo"),
         onClick: () => {
           if (cancel(articleId)) analytics.track("interaction.undo", { articleId, type: "LIKE" });
         },
@@ -88,10 +85,10 @@ export function useInteract() {
   function save(articleId: number) {
     if (!requireAuth()) return;
     delayCommit(articleId, () => commit.mutate({ articleId, type: "SAVE" }));
-    toast(isIt ? "Salvato" : "Saved", {
-      description: isIt ? "Azione programmata. Annulla?" : "Action scheduled. Undo?",
+    toast(t("saveScheduled"), {
+      description: t("scheduledDescription"),
       action: {
-        label: isIt ? "Annulla" : "Undo",
+        label: t("undo"),
         onClick: () => {
           if (cancel(articleId)) analytics.track("interaction.undo", { articleId, type: "SAVE" });
         },
@@ -137,12 +134,10 @@ export function useInteract() {
     // Schedule server commit in 3s
     delayCommit(articleId, () => commit.mutate({ articleId, type: "DISCARD" }));
 
-    toast(isIt ? "Articolo nascosto" : "Article hidden", {
-      description: isIt
-        ? "Annulla per ripristinare l'articolo"
-        : "Undo to restore the article",
+    toast(t("hidden"), {
+      description: t("hiddenDescription"),
       action: {
-        label: isIt ? "Annulla" : "Undo",
+        label: t("undo"),
         onClick: () => {
           // Cancel pending commit and restore snapshots
           if (cancel(articleId)) {
@@ -161,8 +156,8 @@ export function useInteract() {
   function report(articleId: number, reason?: string) {
     if (!requireAuth()) return;
     commit.mutate({ articleId, type: "REPORT", reason });
-    toast(isIt ? "Segnalato" : "Reported", {
-      description: isIt ? "Grazie per la tua segnalazione." : "Thanks for your report.",
+    toast(t("reported"), {
+      description: t("reportedDescription"),
     });
   }
 

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useCreateList } from "@/features/lists/hooks/useReadingLists";
-import { useParams } from "next/navigation";
+import { useTranslations } from "next-intl";
 import {
   Dialog,
   DialogContent,
@@ -17,8 +17,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 
 export default function CreateListDialog() {
-  const { locale } = useParams() as { locale?: "it" | "en" };
-  const isIt = locale !== "en";
+  const t = useTranslations("lists.createDialog");
+  const common = useTranslations("common");
 
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
@@ -36,10 +36,8 @@ export default function CreateListDialog() {
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!name.trim()) {
-      toast(isIt ? "Nome obbligatorio" : "Name required", {
-        description: isIt
-          ? "Per favore inserisci un nome per la lista."
-          : "Please enter a name for the list.",
+      toast(t("nameRequiredTitle"), {
+        description: t("nameRequiredDescription"),
       });
       return;
     }
@@ -52,26 +50,19 @@ export default function CreateListDialog() {
       },
       {
         onSuccess: () => {
-          toast(isIt ? "Lista creata" : "List created", {
+          toast(t("created"), {
             description:
               visibility === "public"
-                ? isIt
-                  ? "La lista è pubblica."
-                  : "The list is public."
-                : isIt
-                  ? "La lista è privata."
-                  : "The list is private.",
+                ? t("createdPublic")
+                : t("createdPrivate"),
           });
           resetForm();
           setOpen(false);
         },
         onError: (e: any) => {
-          toast(isIt ? "Errore" : "Error", {
+          toast(t("errorTitle"), {
             description:
-              e?.message ??
-              (isIt
-                ? "Impossibile creare la lista in questo momento."
-                : "Unable to create the list right now."),
+              e?.message ?? t("createFailed"),
           });
         },
       }
@@ -81,30 +72,22 @@ export default function CreateListDialog() {
   return (
     <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) resetForm(); }}>
       <DialogTrigger asChild>
-        <Button size="sm">{isIt ? "Nuova lista" : "New list"}</Button>
+        <Button size="sm">{t("trigger")}</Button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>{isIt ? "Crea una nuova lista" : "Create a new list"}</DialogTitle>
-          <DialogDescription>
-            {isIt
-              ? "Raccogli gli articoli che vuoi leggere o tenere da parte."
-              : "Collect articles you want to read or save for later."}
-          </DialogDescription>
+          <DialogTitle>{t("title")}</DialogTitle>
+          <DialogDescription>{t("description")}</DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="mt-2 space-y-4">
           <div className="space-y-1">
             <label className="text-sm font-medium" htmlFor="list-name">
-              {isIt ? "Nome" : "Name"}
+              {t("nameLabel")}
             </label>
             <Input
               id="list-name"
-              placeholder={
-                isIt
-                  ? "Es. Da leggere questa settimana"
-                  : "e.g. To read this week"
-              }
+              placeholder={t("namePlaceholder")}
               value={name}
               onChange={(e) => setName(e.target.value)}
             />
@@ -112,27 +95,21 @@ export default function CreateListDialog() {
 
           <div className="space-y-1">
             <label className="text-sm font-medium" htmlFor="list-desc">
-              {isIt ? "Descrizione (opzionale)" : "Description (optional)"}
+              {t("descriptionLabel")}
             </label>
             <Textarea
               id="list-desc"
               rows={3}
-              placeholder={
-                isIt
-                  ? "A cosa serve questa lista?"
-                  : "What is this list for?"
-              }
+              placeholder={t("descriptionPlaceholder")}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
             />
           </div>
 
           <div className="space-y-1">
-            <span className="text-sm font-medium">{isIt ? "Visibilità" : "Visibility"}</span>
+            <span className="text-sm font-medium">{t("visibilityLabel")}</span>
             <p className="text-xs text-muted-foreground">
-              {isIt
-                ? "Puoi sempre cambiare questa impostazione in futuro (quando implementeremo l’editing)."
-                : "You can change this setting later (when editing is implemented)."}
+              {t("visibilityHint")}
             </p>
             <div className="mt-1 flex gap-2">
               <Button
@@ -141,7 +118,7 @@ export default function CreateListDialog() {
                 size="sm"
                 onClick={() => setVisibility("private")}
               >
-                {isIt ? "Privata" : "Private"}
+                {t("private")}
               </Button>
               <Button
                 type="button"
@@ -149,7 +126,7 @@ export default function CreateListDialog() {
                 size="sm"
                 onClick={() => setVisibility("public")}
               >
-                {isIt ? "Pubblica" : "Public"}
+                {t("public")}
               </Button>
             </div>
           </div>
@@ -160,10 +137,10 @@ export default function CreateListDialog() {
               variant="ghost"
               onClick={() => setOpen(false)}
             >
-              {isIt ? "Annulla" : "Cancel"}
+              {common("cancel")}
             </Button>
             <Button type="submit" disabled={create.isPending}>
-              {isIt ? "Crea" : "Create"}
+              {t("create")}
             </Button>
           </div>
         </form>

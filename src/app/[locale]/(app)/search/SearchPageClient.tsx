@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useParams, useRouter, useSearchParams } from "next/navigation";
+import { useTranslations } from "next-intl";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { searchArticlesPublic } from "@/lib/api/articlesSearch";
 import { getTags, searchByTag, type ArticleTagDto } from "@/lib/api/articlesTags";
@@ -11,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import TagBar from "@/features/search/components/TagBar";
 import { toast } from "sonner";
 import type { ApiError } from "@/lib/api/errors";
+import { useAppLocale } from "@/i18n/useAppLocale";
 
 function clampPage(n: number) {
   return Number.isFinite(n) && n > 0 ? n : 1;
@@ -21,7 +23,8 @@ function clampPageSize(n: number) {
 }
 
 export default function SearchPageClient() {
-  const { locale } = useParams() as { locale: "it" | "en" };
+  const t = useTranslations("search.page");
+  const { locale } = useAppLocale();
   const router = useRouter();
   const sp = useSearchParams();
 
@@ -69,26 +72,26 @@ export default function SearchPageClient() {
     return [
       {
         slug: "tech",
-        name: locale === "it" ? "Tecnologia" : "Technology",
+        name: t("fallbackTagNames.tech"),
         keywords: [],
       },
       {
         slug: "business",
-        name: locale === "it" ? "Business" : "Business",
+        name: t("fallbackTagNames.business"),
         keywords: [],
       },
       {
         slug: "design",
-        name: locale === "it" ? "Design" : "Design",
+        name: t("fallbackTagNames.design"),
         keywords: [],
       },
       {
         slug: "ai",
-        name: locale === "it" ? "AI" : "AI",
+        name: t("fallbackTagNames.ai"),
         keywords: [],
       },
     ];
-  }, [locale]);
+  }, [t]);
 
   const tagsToRender = tagsQuery.isError ? fallbackTags : tagsQuery.data ?? [];
 
@@ -121,21 +124,21 @@ export default function SearchPageClient() {
 
   useEffect(() => {
     if (tagsQuery.isError) {
-      toast(locale === "it" ? "Errore caricando i tag" : "Failed to load tags");
+      toast(t("loadTagsErrorToast"));
     }
-  }, [tagsQuery.isError, locale]);
+  }, [tagsQuery.isError, t]);
 
   useEffect(() => {
     if (!resultsQuery.isError) return;
     const err = resultsQuery.error as unknown as ApiError | Error | undefined;
 
     if ((err as ApiError | undefined)?.status === 404) {
-      toast(locale === "it" ? "Tag non valido" : "Unknown tag");
+      toast(t("invalidTagToast"));
       return;
     }
 
-    toast(locale === "it" ? "Errore durante la ricerca" : "Search failed");
-  }, [resultsQuery.isError, resultsQuery.error, locale]);
+    toast(t("searchFailedToast"));
+  }, [resultsQuery.isError, resultsQuery.error, t]);
 
   const totalPages = useMemo(() => {
     const total = resultsQuery.data?.total ?? 0;
@@ -143,8 +146,8 @@ export default function SearchPageClient() {
   }, [resultsQuery.data?.total, pageSize]);
 
   const pageLabel = useMemo(() => {
-    return locale === "it" ? `Pagina ${page} di ${totalPages}` : `Page ${page} of ${totalPages}`;
-  }, [locale, page, totalPages]);
+    return t("pageOf", { page, totalPages });
+  }, [page, t, totalPages]);
 
   function setPage(nextPage: number) {
     const next = new URLSearchParams(sp.toString());
@@ -162,10 +165,8 @@ export default function SearchPageClient() {
   return (
     <div className="mx-auto w-full max-w-3xl px-4 py-6">
       <div className="mb-4">
-        <h1 className="text-2xl font-semibold">{locale === "it" ? "Cerca" : "Search"}</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          {locale === "it" ? "Ricerca full-text tra gli articoli." : "Full-text search across articles."}
-        </p>
+        <h1 className="text-2xl font-semibold">{t("title")}</h1>
+        <p className="mt-1 text-sm text-muted-foreground">{t("description")}</p>
       </div>
 
       {/* Input (page-local) */}
@@ -174,11 +175,11 @@ export default function SearchPageClient() {
           className="h-10 w-full max-w-xl rounded-md border bg-background px-3 text-sm"
           value={qInput}
           onChange={(e) => setQInput(e.target.value)}
-          placeholder={locale === "it" ? "Es: aggiornamenti ucraina" : "E.g. ukraine news"}
+          placeholder={t("queryPlaceholder")}
         />
 
         <div className="flex items-center gap-2">
-          <span className="text-xs text-muted-foreground">{locale === "it" ? "Per pagina:" : "Per page:"}</span>
+          <span className="text-xs text-muted-foreground">{t("perPage")}</span>
           <select
             className="h-10 rounded-md border bg-background px-2 text-sm"
             value={pageSize}
@@ -192,7 +193,6 @@ export default function SearchPageClient() {
       </div>
 
       <TagBar
-        locale={locale}
         tags={tagsToRender.map((t) => ({ slug: t.slug, name: t.name }))}
         selectedTag={selectedTag}
         hrefForTag={hrefForTag}
@@ -203,12 +203,12 @@ export default function SearchPageClient() {
       <div className="mt-5">
         {!q && selectedTag === null && (
           <div className="rounded border p-4 text-sm text-muted-foreground">
-            {locale === "it" ? "Inserisci una query o seleziona un tag." : "Type a query or select a tag."}
+            {t("emptyPrompt")}
           </div>
         )}
 
         {(selectedTag !== null || q) && resultsQuery.isLoading && (
-          <div className="text-sm text-muted-foreground">{locale === "it" ? "Ricerca in corso…" : "Searching…"}</div>
+          <div className="text-sm text-muted-foreground">{t("searching")}</div>
         )}
 
         {(selectedTag !== null || q) && resultsQuery.isError && (
@@ -216,26 +216,24 @@ export default function SearchPageClient() {
             {(() => {
               const err = resultsQuery.error as unknown as ApiError | Error | undefined;
               if ((err as ApiError | undefined)?.status === 404) {
-                return locale === "it" ? "Tag non valido." : "Unknown tag.";
+                return t("invalidTag");
               }
-              return locale === "it" ? "Errore durante la ricerca." : "Search failed.";
+              return t("searchFailed");
             })()}
             <div className="mt-2 text-xs text-muted-foreground">
-              {locale === "it"
-                ? "Impossibile completare la richiesta. Riprova tra poco."
-                : "We couldn't complete the request. Please try again."}
+              {t("requestRetryHint")}
             </div>
           </div>
         )}
 
         {(selectedTag !== null || q) && resultsQuery.data && resultsQuery.data.items.length === 0 && (
-          <div className="rounded border p-4 text-sm text-muted-foreground">{locale === "it" ? "Nessun risultato." : "No results."}</div>
+          <div className="rounded border p-4 text-sm text-muted-foreground">{t("noResults")}</div>
         )}
 
         {(selectedTag !== null || q) && resultsQuery.data && resultsQuery.data.items.length > 0 && (
           <>
             <div className="mb-3 flex items-center justify-between text-xs text-muted-foreground">
-              <span>{locale === "it" ? `Risultati: ${resultsQuery.data.total}` : `Results: ${resultsQuery.data.total}`}</span>
+              <span>{t("results", { total: resultsQuery.data.total })}</span>
               <span>{pageLabel}</span>
             </div>
 
@@ -250,11 +248,11 @@ export default function SearchPageClient() {
 
               <div className="flex items-center justify-between">
                 <Button variant="outline" size="sm" onClick={() => setPage(page - 1)} disabled={page <= 1}>
-                  {locale === "it" ? "Precedente" : "Previous"}
+                  {t("previous")}
                 </Button>
 
                 <Button variant="outline" size="sm" onClick={() => setPage(page + 1)} disabled={page >= totalPages}>
-                  {locale === "it" ? "Successiva" : "Next"}
+                  {t("next")}
                 </Button>
               </div>
             </div>

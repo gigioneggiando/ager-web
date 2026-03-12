@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useParams, useRouter, useSearchParams } from "next/navigation";
+import { useTranslations } from "next-intl";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 
@@ -9,6 +10,7 @@ import TagBar from "@/features/search/components/TagBar";
 import SearchResultRow from "@/features/search/components/SearchResultRow";
 import { Button } from "@/components/ui/button";
 import { getTags, searchByTag, type ArticleTagDto } from "@/lib/api/articlesTags";
+import { useAppLocale } from "@/i18n/useAppLocale";
 
 function clampPage(n: number) {
   return Number.isFinite(n) && n > 0 ? n : 1;
@@ -20,8 +22,8 @@ function clampPageSize(n: number) {
 }
 
 export default function ExplorePageClient() {
-  const { locale } = useParams() as { locale: "it" | "en" };
-  const isIt = locale === "it";
+  const t = useTranslations("search.explore");
+  const { locale } = useAppLocale();
   const router = useRouter();
   const sp = useSearchParams();
 
@@ -39,12 +41,12 @@ export default function ExplorePageClient() {
 
   const fallbackTags = useMemo((): ArticleTagDto[] => {
     return [
-      { slug: "tech", name: isIt ? "Tecnologia" : "Technology", keywords: [] },
-      { slug: "business", name: isIt ? "Business" : "Business", keywords: [] },
-      { slug: "design", name: isIt ? "Design" : "Design", keywords: [] },
-      { slug: "ai", name: isIt ? "AI" : "AI", keywords: [] },
+      { slug: "tech", name: t("fallbackTagNames.tech"), keywords: [] },
+      { slug: "business", name: t("fallbackTagNames.business"), keywords: [] },
+      { slug: "design", name: t("fallbackTagNames.design"), keywords: [] },
+      { slug: "ai", name: t("fallbackTagNames.ai"), keywords: [] },
     ];
-  }, [isIt]);
+  }, [t]);
 
   const tagsToRender = tagsQuery.isError ? fallbackTags : tagsQuery.data ?? [];
 
@@ -65,21 +67,18 @@ export default function ExplorePageClient() {
     retry: 1,
   });
 
-  const totalPages = useMemo(() => {
-    const total = resultsQuery.data?.total ?? 0;
-    return Math.max(1, Math.ceil(total / pageSize));
-  }, [resultsQuery.data?.total, pageSize]);
+  const totalPages = Math.max(1, Math.ceil((resultsQuery.data?.total ?? 0) / pageSize));
 
   useEffect(() => {
     if (tagsQuery.isError) {
-      toast(isIt ? "Errore caricando i tag" : "Failed to load tags");
+      toast(t("loadTagsErrorToast"));
     }
-  }, [tagsQuery.isError, isIt]);
+  }, [tagsQuery.isError, t]);
 
   useEffect(() => {
     if (!resultsQuery.isError) return;
-    toast(isIt ? "Errore caricando gli articoli" : "Failed to load articles");
-  }, [resultsQuery.isError, isIt]);
+    toast(t("loadArticlesErrorToast"));
+  }, [resultsQuery.isError, t]);
 
   function setPage(nextPage: number) {
     const next = new URLSearchParams(sp.toString());
@@ -91,10 +90,8 @@ export default function ExplorePageClient() {
   return (
     <div className="mx-auto w-full max-w-3xl px-4 py-6">
       <div className="mb-4">
-        <h1 className="text-2xl font-semibold">{isIt ? "Esplora" : "Explore"}</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          {isIt ? "Cerca e scopri articoli per tag." : "Search and discover articles by tag."}
-        </p>
+        <h1 className="text-2xl font-semibold">{t("title")}</h1>
+        <p className="mt-1 text-sm text-muted-foreground">{t("description")}</p>
       </div>
 
       <form
@@ -110,12 +107,11 @@ export default function ExplorePageClient() {
           className="h-10 w-full max-w-xl rounded-md border bg-background px-3 text-sm"
           value={qInput}
           onChange={(e) => setQInput(e.target.value)}
-          placeholder={isIt ? "Cerca…" : "Search…"}
+          placeholder={t("queryPlaceholder")}
         />
       </form>
 
       <TagBar
-        locale={locale}
         tags={tagsToRender.map((t) => ({ slug: t.slug, name: t.name }))}
         selectedTag={selectedTag}
         hrefForTag={hrefForTag}
@@ -126,25 +122,25 @@ export default function ExplorePageClient() {
       <div className="mt-6">
         {!selectedTag && (
           <div className="rounded border p-4 text-sm text-muted-foreground">
-            {isIt ? "Seleziona un topic per esplorare gli articoli." : "Select a topic to explore articles."}
+            {t("emptyPrompt")}
           </div>
         )}
 
         {selectedTag && resultsQuery.isLoading && (
-          <div className="text-sm text-muted-foreground">{isIt ? "Caricamento articoli…" : "Loading articles…"}</div>
+          <div className="text-sm text-muted-foreground">{t("loading")}</div>
         )}
 
         {selectedTag && resultsQuery.data && resultsQuery.data.items.length === 0 && (
           <div className="rounded border p-4 text-sm text-muted-foreground">
-            {isIt ? "Nessun articolo per questo topic." : "No articles for this topic."}
+            {t("noResults")}
           </div>
         )}
 
         {selectedTag && resultsQuery.data && resultsQuery.data.items.length > 0 && (
           <>
             <div className="mb-3 flex items-center justify-between text-xs text-muted-foreground">
-              <span>{isIt ? `Risultati: ${resultsQuery.data.total}` : `Results: ${resultsQuery.data.total}`}</span>
-              <span>{isIt ? `Pagina ${page} di ${totalPages}` : `Page ${page} of ${totalPages}`}</span>
+              <span>{t("results", { total: resultsQuery.data.total })}</span>
+              <span>{t("pageOf", { page, totalPages })}</span>
             </div>
 
             <div className="space-y-3">
@@ -155,10 +151,10 @@ export default function ExplorePageClient() {
 
             <div className="mt-8 flex items-center justify-between">
               <Button variant="outline" size="sm" onClick={() => setPage(page - 1)} disabled={page <= 1}>
-                {isIt ? "Precedente" : "Previous"}
+                {t("previous")}
               </Button>
               <Button variant="outline" size="sm" onClick={() => setPage(page + 1)} disabled={page >= totalPages}>
-                {isIt ? "Successiva" : "Next"}
+                {t("next")}
               </Button>
             </div>
           </>

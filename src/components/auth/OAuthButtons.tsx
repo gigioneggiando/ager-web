@@ -1,9 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { useAppLocale } from "@/i18n/useAppLocale";
 import { useAuthActions } from "@/lib/auth/session";
 import { ApiError } from "@/lib/api/errors";
 
@@ -40,8 +42,8 @@ function loadScriptOnce(src: string): Promise<void> {
 }
 
 export default function OAuthButtons({ disabled }: { disabled?: boolean }) {
-  const { locale } = useParams() as { locale: "it" | "en" };
-  const isIt = locale === "it";
+  const { locale } = useAppLocale();
+  const t = useTranslations("auth.oauth");
   const router = useRouter();
   const { oauthGoogle, oauthApple } = useAuthActions();
 
@@ -69,10 +71,10 @@ export default function OAuthButtons({ disabled }: { disabled?: boolean }) {
         return;
       }
 
-      const msg = err?.message ?? (isIt ? "Accesso non riuscito." : "Sign-in failed.");
-      toast(isIt ? "Errore" : "Error", { description: msg });
+      const msg = err?.message ?? t("signInFailed");
+      toast(t("errorTitle"), { description: msg });
     },
-    [isIt]
+    [t]
   );
 
   useEffect(() => {
@@ -99,7 +101,7 @@ export default function OAuthButtons({ disabled }: { disabled?: boolean }) {
         callback: async (resp: any) => {
           const idToken = resp?.credential;
           if (!idToken) {
-            toast(isIt ? "Token Google mancante" : "Missing Google token");
+            toast(t("googleMissingToken"));
             setPending(null);
             return;
           }
@@ -133,23 +135,21 @@ export default function OAuthButtons({ disabled }: { disabled?: boolean }) {
       });
       googleRendered.current = true;
     }
-  }, [googleClientId, googleReady, handleOAuthError, isIt, locale, oauthGoogle, router]);
+  }, [googleClientId, googleReady, handleOAuthError, locale, oauthGoogle, router, t]);
 
   async function startGoogle() {
     setActionableError(null);
     if (!showGoogle || !googleClientId) {
-      toast(isIt ? "Google non configurato" : "Google is not configured", {
-        description: isIt ? "Imposta NEXT_PUBLIC_GOOGLE_CLIENT_ID" : "Set NEXT_PUBLIC_GOOGLE_CLIENT_ID",
+      toast(t("googleNotConfiguredTitle"), {
+        description: t("googleNotConfiguredDescription"),
       });
       return;
     }
 
     // If Google is configured, the rendered button is the primary path.
     // Keep this handler as a safe fallback (e.g. if the script failed to load).
-    toast(isIt ? "Google non disponibile" : "Google unavailable", {
-      description: isIt
-        ? "Riprova tra poco o aggiorna la pagina."
-        : "Please try again in a moment or refresh the page.",
+    toast(t("googleUnavailableTitle"), {
+      description: t("googleUnavailableDescription"),
     });
   }
 
@@ -157,10 +157,8 @@ export default function OAuthButtons({ disabled }: { disabled?: boolean }) {
     setActionableError(null);
     if (!showApple) return;
     if (!appleClientId || !appleRedirectUri) {
-      toast(isIt ? "Apple non configurato" : "Apple is not configured", {
-        description: isIt
-          ? "Imposta NEXT_PUBLIC_APPLE_CLIENT_ID e NEXT_PUBLIC_APPLE_REDIRECT_URI"
-          : "Set NEXT_PUBLIC_APPLE_CLIENT_ID and NEXT_PUBLIC_APPLE_REDIRECT_URI",
+      toast(t("appleNotConfiguredTitle"), {
+        description: t("appleNotConfiguredDescription"),
       });
       return;
     }
@@ -173,7 +171,7 @@ export default function OAuthButtons({ disabled }: { disabled?: boolean }) {
 
       const A = window.AppleID;
       if (!A?.auth) {
-        toast(isIt ? "Apple non disponibile" : "Apple unavailable");
+        toast(t("appleUnavailable"));
         return;
       }
 
@@ -188,7 +186,7 @@ export default function OAuthButtons({ disabled }: { disabled?: boolean }) {
       const idToken = resp?.authorization?.id_token;
 
       if (!idToken) {
-        toast(isIt ? "Token Apple mancante" : "Missing Apple token");
+        toast(t("appleMissingToken"));
         return;
       }
 
@@ -223,7 +221,7 @@ export default function OAuthButtons({ disabled }: { disabled?: boolean }) {
             disabled={disabled || pending !== null}
           >
             <GoogleGlyph />
-            {isIt ? "Continua con Google" : "Continue with Google"}
+            {t("continueWithGoogle")}
           </Button>
         )
       )}
@@ -237,21 +235,15 @@ export default function OAuthButtons({ disabled }: { disabled?: boolean }) {
           disabled={disabled || pending !== null}
         >
           {pending === "apple"
-            ? isIt
-              ? "Accesso con Apple…"
-              : "Signing in with Apple…"
-            : isIt
-              ? "Continua con Apple"
-              : "Continue with Apple"}
+            ? t("signingInWithApple")
+            : t("continueWithApple")}
         </Button>
       )}
 
       {actionableError && (
         <div className="rounded-md border p-3 text-sm">
           <div className="text-foreground">
-            {isIt
-              ? `${actionableError.provider} non ha condiviso la tua email. Per continuare, accedi con OTP via email.`
-              : `${actionableError.provider} didn’t share your email. To continue, sign in with an email OTP.`}
+            {t("missingEmailDescription", { provider: actionableError.provider })}
           </div>
           <div className="mt-2">
             <Button
@@ -262,7 +254,7 @@ export default function OAuthButtons({ disabled }: { disabled?: boolean }) {
                 router.push(`/${locale}/login?fallback=external_auth_email_missing`);
               }}
             >
-              {isIt ? "Accedi con OTP via email" : "Sign in with email code"}
+              {t("signInWithEmailCode")}
             </Button>
           </div>
         </div>

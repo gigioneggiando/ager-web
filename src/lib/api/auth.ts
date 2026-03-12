@@ -1,5 +1,5 @@
-import { parseApiError } from "@/lib/api/errors";
 import { ApiError } from "@/lib/api/errors";
+import { requestJson, requestVoid } from "@/lib/api/request";
 import type {
   AuthResultDto,
   CsrfBootstrapResponse,
@@ -73,36 +73,6 @@ export function getStoredRefreshToken(): string | null {
   return readStoredRefreshToken().token;
 }
 
-async function postJson<T>(path: string, body?: unknown, headers?: HeadersInit): Promise<T> {
-  const res = await fetch(path, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", ...(headers ?? {}) },
-    body: body === undefined ? undefined : JSON.stringify(body),
-  });
-
-  if (!res.ok) throw await parseApiError(res);
-  return (await res.json()) as T;
-}
-
-async function postNoContent(path: string, body?: unknown, headers?: HeadersInit): Promise<void> {
-  const res = await fetch(path, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", ...(headers ?? {}) },
-    body: body === undefined ? undefined : JSON.stringify(body),
-  });
-  if (!res.ok) throw await parseApiError(res);
-}
-
-async function getJson<T>(path: string, headers?: HeadersInit): Promise<T> {
-  const res = await fetch(path, {
-    method: "GET",
-    headers: { ...(headers ?? {}) },
-  });
-
-  if (!res.ok) throw await parseApiError(res);
-  return (await res.json()) as T;
-}
-
 function normalizeAuthResult(data: AuthResultDto): AuthResultDto {
   if (data.refreshToken) {
     storeRefreshToken(data.refreshToken, data.refreshTokenExpiresAt ?? null);
@@ -116,7 +86,7 @@ export async function bootstrapCsrf(force = false): Promise<string | null> {
   if (!force && csrfBootstrapPromise) return csrfBootstrapPromise;
 
   csrfBootstrapPromise = (async () => {
-    const data = await getJson<CsrfBootstrapResponse>("/api/auth/csrf");
+    const data = await requestJson<CsrfBootstrapResponse>("/api/auth/csrf");
     csrfToken = data.token ?? null;
     return csrfToken;
   })();
@@ -134,37 +104,49 @@ export async function getCsrfHeaderValue(): Promise<string | null> {
 }
 
 export async function requestLoginOtp(email: string): Promise<void> {
-  await postNoContent("/api/auth/login/request-code", { email } satisfies RequestLoginOtpCodeRequest);
+  await requestVoid("/api/auth/login/request-code", {
+    method: "POST",
+    body: { email } satisfies RequestLoginOtpCodeRequest,
+  });
 }
 
 export async function loginWithOtp(email: string, otpCode: string): Promise<AuthResultDto> {
   return normalizeAuthResult(
-    await postJson<AuthResultDto>("/api/auth/login", { email, otpCode } satisfies LoginRequest)
+    await requestJson<AuthResultDto>("/api/auth/login", {
+      method: "POST",
+      body: { email, otpCode } satisfies LoginRequest,
+    })
   );
 }
 
 export async function loginWithPassword(email: string, password: string): Promise<AuthResultDto> {
   return normalizeAuthResult(
-    await postJson<AuthResultDto>("/api/auth/login", { email, password } satisfies LoginRequest)
+    await requestJson<AuthResultDto>("/api/auth/login", {
+      method: "POST",
+      body: { email, password } satisfies LoginRequest,
+    })
   );
 }
 
 export async function requestRegisterOtp(username: string, email: string): Promise<void> {
-  await postNoContent("/api/auth/register/request-code", { username, email } satisfies RequestRegisterOtpCodeRequest);
+  await requestVoid("/api/auth/register/request-code", {
+    method: "POST",
+    body: { username, email } satisfies RequestRegisterOtpCodeRequest,
+  });
 }
 
 export async function requestPasswordResetOtp(email: string): Promise<void> {
-  await postNoContent(
-    "/api/auth/forgot-password/request-code",
-    { email } satisfies RequestForgotPasswordOtpCodeRequest
-  );
+  await requestVoid("/api/auth/forgot-password/request-code", {
+    method: "POST",
+    body: { email } satisfies RequestForgotPasswordOtpCodeRequest,
+  });
 }
 
 export async function resetPassword(email: string, otpCode: string, newPassword: string): Promise<void> {
-  await postNoContent(
-    "/api/auth/forgot-password/reset",
-    { email, otpCode, newPassword } satisfies ResetForgotPasswordRequest
-  );
+  await requestVoid("/api/auth/forgot-password/reset", {
+    method: "POST",
+    body: { email, otpCode, newPassword } satisfies ResetForgotPasswordRequest,
+  });
 }
 
 export async function registerWithOtp(
@@ -180,24 +162,29 @@ export async function registerWithOtp(
     ...(password ? { password } : {}),
   };
 
-  return normalizeAuthResult(await postJson<AuthResultDto>("/api/auth/register", body));
+  return normalizeAuthResult(
+    await requestJson<AuthResultDto>("/api/auth/register", {
+      method: "POST",
+      body,
+    })
+  );
 }
 
 export async function oauthGoogle(idToken: string): Promise<AuthResultDto> {
   return normalizeAuthResult(
-    await postJson<AuthResultDto>(
-      "/api/auth/oauth/google",
-      { idToken } satisfies OAuthIdTokenRequest
-    )
+    await requestJson<AuthResultDto>("/api/auth/oauth/google", {
+      method: "POST",
+      body: { idToken } satisfies OAuthIdTokenRequest,
+    })
   );
 }
 
 export async function oauthApple(idToken: string): Promise<AuthResultDto> {
   return normalizeAuthResult(
-    await postJson<AuthResultDto>(
-      "/api/auth/oauth/apple",
-      { idToken } satisfies OAuthIdTokenRequest
-    )
+    await requestJson<AuthResultDto>("/api/auth/oauth/apple", {
+      method: "POST",
+      body: { idToken } satisfies OAuthIdTokenRequest,
+    })
   );
 }
 
@@ -214,8 +201,13 @@ export async function refresh(refreshToken?: string): Promise<AuthResultDto> {
     let data: AuthResultDto;
     try {
       data = tokenToUse
-        ? await postJson<AuthResultDto>("/api/auth/refresh", { refreshToken: tokenToUse })
-        : await postJson<AuthResultDto>("/api/auth/refresh");
+        ? await requestJson<AuthResultDto>("/api/auth/refresh", {
+            method: "POST",
+            body: { refreshToken: tokenToUse },
+          })
+        : await requestJson<AuthResultDto>("/api/auth/refresh", {
+            method: "POST",
+          });
     } catch (error) {
       const apiError = error as ApiError;
       if (apiError?.status === 401) {
@@ -253,11 +245,11 @@ export async function logout(accessToken: string | null, refreshToken?: string):
   if (csrf) headers["X-CSRF-TOKEN"] = csrf;
 
   try {
-    await postNoContent(
-      "/api/auth/logout",
-      tokenToUse ? { refreshToken: tokenToUse } : undefined,
-      headers
-    );
+    await requestVoid("/api/auth/logout", {
+      method: "POST",
+      body: tokenToUse ? { refreshToken: tokenToUse } : undefined,
+      headers,
+    });
   } finally {
     clearStoredRefreshToken();
   }
@@ -265,20 +257,31 @@ export async function logout(accessToken: string | null, refreshToken?: string):
 
 // Back-compat helper for callers that still use a single login(payload).
 export async function login(body: LoginRequest): Promise<AuthResultDto> {
-  return normalizeAuthResult(await postJson<AuthResultDto>("/api/auth/login", body));
+  return normalizeAuthResult(
+    await requestJson<AuthResultDto>("/api/auth/login", {
+      method: "POST",
+      body,
+    })
+  );
 }
 
 export async function requestRestoreOtp(email: string): Promise<void> {
-  await postNoContent("/api/auth/restore/request-code", { email } satisfies RequestRestoreOtpCodeRequest);
+  await requestVoid("/api/auth/restore/request-code", {
+    method: "POST",
+    body: { email } satisfies RequestRestoreOtpCodeRequest,
+  });
 }
 
 export async function restoreAccount(email: string, otpCode: string): Promise<void> {
-  await postNoContent("/api/auth/restore", { email, otpCode } satisfies RestoreAccountRequest);
+  await requestVoid("/api/auth/restore", {
+    method: "POST",
+    body: { email, otpCode } satisfies RestoreAccountRequest,
+  });
 }
 
 export async function getPasswordStrength(password: string): Promise<PasswordStrengthResponse> {
-  return postJson<PasswordStrengthResponse>(
-    "/api/auth/password-strength",
-    { password } satisfies PasswordStrengthRequest
-  );
+  return requestJson<PasswordStrengthResponse>("/api/auth/password-strength", {
+    method: "POST",
+    body: { password } satisfies PasswordStrengthRequest,
+  });
 }

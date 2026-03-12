@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { Badge } from "@/components/ui/badge";
 import {
   DropdownMenu,
@@ -17,14 +18,14 @@ export type TagBarTag = {
 };
 
 export default function TagBar(props: {
-  locale: "it" | "en";
   tags: TagBarTag[];
   selectedTag: string | null;
   hrefForTag: (slug: string | null) => string;
   loading?: boolean;
   showFallbackNote?: boolean;
 }) {
-  const { locale, tags, selectedTag, hrefForTag, loading, showFallbackNote } = props;
+  const t = useTranslations("search.tagBar");
+  const { tags, selectedTag, hrefForTag, loading, showFallbackNote } = props;
 
   const selectedName = selectedTag ? tags.find((t) => t.slug === selectedTag)?.name ?? selectedTag : null;
 
@@ -32,11 +33,11 @@ export default function TagBar(props: {
     <div className="mt-4">
       <div className="mb-2 flex items-center justify-between">
         <div className="text-xs text-muted-foreground">
-          {locale === "it" ? "Tag" : "Tags"}
+          {t("title")}
         </div>
         {loading ? (
           <div className="text-xs text-muted-foreground">
-            {locale === "it" ? "Caricamento…" : "Loading…"}
+            {t("loading")}
           </div>
         ) : null}
       </div>
@@ -49,11 +50,7 @@ export default function TagBar(props: {
               variant="secondary"
               size="sm"
               className="max-w-full rounded-full gap-2"
-              aria-label={
-                locale === "it"
-                  ? `Tag selezionato: ${selectedName}. Cambia tag.`
-                  : `Selected tag: ${selectedName}. Change tag.`
-              }
+              aria-label={t("selectedTagAriaLabel", { name: selectedName ?? "" })}
             >
               <span className="truncate max-w-[14rem]">{selectedName}</span>
               <ChevronDown className="h-4 w-4" />
@@ -101,9 +98,7 @@ export default function TagBar(props: {
 
       {showFallbackNote ? (
         <div className="mt-2 text-xs text-muted-foreground">
-          {locale === "it"
-            ? "Impossibile caricare i tag dal server: mostro un set minimo."
-            : "Could not load tags from server: showing a minimal set."}
+          {t("fallbackNote")}
         </div>
       ) : null}
     </div>

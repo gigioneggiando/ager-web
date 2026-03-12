@@ -1,7 +1,8 @@
 "use client";
 
-import { useParams } from "next/navigation";
+import { useTranslations } from "next-intl";
 import Link from "next/link";
+import { useParams } from "next/navigation";
 import {
   useListItemsInfinite,
   useMyLists,
@@ -15,9 +16,12 @@ import { toast } from "sonner";
 import type { ReadingList, ReadingListItem } from "@/lib/api/types";
 import type { InfiniteData } from "@tanstack/react-query";
 import type { ReadingListItemsPage } from "@/lib/api/readingLists";
+import { useAppLocale } from "@/i18n/useAppLocale";
 
 export default function ListDetailPage() {
-  const { locale, id } = useParams() as { locale: "it" | "en"; id: string };
+  const t = useTranslations("lists.detail");
+  const { locale } = useAppLocale();
+  const { id } = useParams() as { id: string };
   const listId = Number(id);
 
   const { data: listsData } = useMyLists();
@@ -38,7 +42,7 @@ export default function ListDetailPage() {
     return (
       <div className="mx-auto w-full max-w-3xl px-4 py-6">
         <p className="text-sm text-destructive">
-          {locale === "it" ? "ID lista non valido." : "Invalid list ID."}
+          {t("invalidId")}
         </p>
       </div>
     );
@@ -56,17 +60,17 @@ export default function ListDetailPage() {
       {/* Back link */}
       <div className="mb-2 text-sm text-muted-foreground">
         <Link href={`/${locale}/lists`} className="hover:underline">
-          ← {locale === "it" ? "Tutte le liste" : "All lists"}
+          ← {t("backToAll")}
         </Link>
       </div>
 
       {/* Header */}
       <h1 className="mb-1 text-2xl font-semibold">
-        {list?.name ?? (locale === "it" ? "Lista" : "List")}
+        {list?.name ?? t("fallbackTitle")}
       </h1>
       {list?.createdAt && (
         <p className="mb-4 text-xs text-muted-foreground">
-          {locale === "it" ? "Creata il " : "Created on "}
+          {t("createdOn")}
           {new Date(list.createdAt).toLocaleDateString(locale)}
         </p>
       )}
@@ -74,23 +78,19 @@ export default function ListDetailPage() {
       {/* Loading / error / empty states */}
       {isLoading && (
             <div className="text-sm text-muted-foreground">
-              {locale === "it" ? "Caricamento…" : "Loading…"}
+              {t("loading")}
             </div>
       )}
 
       {isError && (
         <div className="text-sm text-destructive">
-              {locale === "it"
-                ? "Errore nel caricare gli articoli."
-                : "Failed to load articles."}
+              {t("loadError")}
         </div>
       )}
 
       {!isLoading && !isError && items.length === 0 && (
         <div className="rounded border p-3 text-sm text-muted-foreground">
-          {locale === "it"
-            ? "Nessun articolo in questa lista."
-            : "No articles in this list yet."}
+          {t("empty")}
         </div>
       )}
 
@@ -154,27 +154,16 @@ export default function ListDetailPage() {
                       size="sm"
                       className="flex items-center gap-1 text-xs text-destructive hover:text-destructive"
                       onClick={() => {
-                        const confirmText =
-                          locale === "it"
-                            ? "Rimuovere questo articolo dalla lista?"
-                            : "Remove this article from the list?";
-                        if (!confirm(confirmText)) return;
+                        if (!confirm(t("removeConfirm"))) return;
 
                         remove.mutate(it.articleId, {
                           onSuccess: () => {
-                            toast(
-                              locale === "it"
-                                ? "Articolo rimosso dalla lista"
-                                : "Article removed from list"
-                            );
+                            toast(t("removed"));
                           },
                           onError: (err: any) => {
-                            toast(locale === "it" ? "Errore" : "Error", {
+                            toast(t("errorTitle"), {
                               description:
-                                err?.message ??
-                                (locale === "it"
-                                  ? "Impossibile rimuovere l'articolo"
-                                  : "Unable to remove article"),
+                                err?.message ?? t("removeFailed"),
                             });
                           },
                         });
@@ -182,9 +171,7 @@ export default function ListDetailPage() {
                       disabled={remove.isPending}
                     >
                       <Trash2 className="h-3 w-3" />
-                      <span>
-                        {locale === "it" ? "Rimuovi" : "Remove"}
-                      </span>
+                      <span>{t("remove")}</span>
                     </Button>
                   </div>
                 </div>
@@ -223,12 +210,8 @@ export default function ListDetailPage() {
             disabled={isFetchingNextPage}
           >
             {isFetchingNextPage
-              ? locale === "it"
-                ? "Caricamento…"
-                : "Loading…"
-              : locale === "it"
-              ? "Carica altri"
-              : "Load more"}
+              ? t("loading")
+              : t("loadMore")}
           </Button>
         </div>
       )}

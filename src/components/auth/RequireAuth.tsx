@@ -1,13 +1,14 @@
 "use client";
 
+import { useAppLocale } from "@/i18n/useAppLocale";
 import { useSession } from "@/lib/auth/session";
 import { useEffect, useState } from "react";
-import { useRouter, useParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 
 export default function RequireAuth({ children }: { children: React.ReactNode }) {
   const { ready, accessToken } = useSession();
   const router = useRouter();
-  const { locale } = (useParams() as { locale: string });
+  const { locale } = useAppLocale();
   const [checked, setChecked] = useState(false);
 
   useEffect(() => {

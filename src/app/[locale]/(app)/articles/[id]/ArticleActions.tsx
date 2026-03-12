@@ -1,10 +1,10 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 
 type Props = {
-  locale: "it" | "en";
   href: string;
 };
 
@@ -25,14 +25,14 @@ async function copyToClipboard(text: string) {
   document.body.removeChild(el);
 }
 
-export default function ArticleActions({ locale, href }: Props) {
-  const isIt = locale === "it";
+export default function ArticleActions({ href }: Props) {
+  const t = useTranslations("articleDetail.actions");
 
   return (
     <div className="mt-6 flex gap-2">
       <Button asChild>
         <a href={href} target="_blank" rel="noreferrer">
-          {isIt ? "Apri articolo" : "Open article"}
+          {t("openArticle")}
         </a>
       </Button>
 
@@ -44,13 +44,13 @@ export default function ArticleActions({ locale, href }: Props) {
           e.stopPropagation();
           try {
             await copyToClipboard(href);
-            toast(isIt ? "Link copiato" : "Link copied");
+            toast(t("linkCopied"));
           } catch {
-            toast(isIt ? "Impossibile copiare il link" : "Unable to copy link");
+            toast(t("copyFailed"));
           }
         }}
       >
-        {isIt ? "Copia link" : "Copy link"}
+        {t("copyLink")}
       </Button>
     </div>
   );

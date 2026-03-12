@@ -1,6 +1,7 @@
 "use client";
 
 import { Bell, CircleUser, Settings } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import HeaderSearch from "@/components/search/HeaderSearch";
 import {
@@ -12,17 +13,17 @@ import {
 } from "@/components/ui/dropdown-menu";
 import Link from "next/link";
 import Image from "next/image";
-import { useParams, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
+import { useAppLocale } from "@/i18n/useAppLocale";
 import { useAuthActions, useSession } from "@/lib/auth/session";
 
 export default function AppHeader() {
+  const t = useTranslations("layout.header");
   const { userId } = useSession();
   const { logout } = useAuthActions();
   const isAuthed = userId != null;
-
-  const params = useParams() as { locale?: "it" | "en" };
-  const locale = params?.locale ?? "it";
+  const { locale } = useAppLocale();
   const router = useRouter();
   const qc = useQueryClient();
 
@@ -37,7 +38,7 @@ export default function AppHeader() {
       <Link
         href={`/${locale}`}
         className="flex select-none items-center gap-2 text-xl font-bold tracking-tight md:text-2xl"
-        aria-label="Ager home"
+        aria-label={t("homeAriaLabel")}
       >
         <span className="inline-flex h-8 w-8 items-center justify-center rounded-md bg-muted text-foreground">
           <Image
@@ -59,13 +60,13 @@ export default function AppHeader() {
       <div className="ml-auto flex items-center gap-2 md:ml-0">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" aria-label="Menu">
+            <Button variant="ghost" size="icon" aria-label={t("menuAriaLabel")}>
               <Bell className="h-5 w-5" />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             <DropdownMenuItem disabled>
-              {locale === "it" ? "Notifiche: presto disponibili" : "Notifications: coming soon"}
+              {t("notificationsComingSoon")}
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
@@ -76,8 +77,8 @@ export default function AppHeader() {
               variant="ghost"
               size="icon"
               asChild
-              aria-label={locale === "it" ? "Profilo" : "Profile"}
-              title={locale === "it" ? "Profilo" : "Profile"}
+              aria-label={t("profile")}
+              title={t("profile")}
             >
               <Link href={`/${locale}/profile`}>
                 <CircleUser className="h-5 w-5" />
@@ -89,26 +90,26 @@ export default function AppHeader() {
                 <Button
                   variant="ghost"
                   size="icon"
-                  aria-label={locale === "it" ? "Impostazioni" : "Settings"}
-                  title={locale === "it" ? "Impostazioni" : "Settings"}
+                  aria-label={t("settings")}
+                  title={t("settings")}
                 >
                   <Settings className="h-5 w-5" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <DropdownMenuItem asChild>
-                  <Link href={`/${locale}/profile`}>{locale === "it" ? "Profilo" : "Profile"}</Link>
+                  <Link href={`/${locale}/profile`}>{t("profile")}</Link>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem variant="destructive" onSelect={onLogout}>
-                  {locale === "it" ? "Esci" : "Logout"}
+                  {t("logout")}
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
         ) : (
           <Button size="sm" variant="default" asChild>
-            <Link href={`/${locale}/login`}>{locale === "it" ? "Accedi" : "Sign in"}</Link>
+            <Link href={`/${locale}/login`}>{t("signIn")}</Link>
           </Button>
         )}
       </div>

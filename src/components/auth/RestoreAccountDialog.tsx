@@ -1,11 +1,13 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { ApiError } from "@/lib/api/errors";
+import { useCountdown } from "@/lib/useCountdown";
 import { requestRestoreCode, restoreAccountByOtp } from "@/lib/api/restore";
 
 type Props = {
@@ -15,33 +17,31 @@ type Props = {
   email?: string; // optional prefill
 };
 
-function mapRestoreError(locale: "it" | "en", code?: string) {
-  const it = locale === "it";
+function mapRestoreError(t: ReturnType<typeof useTranslations<"auth.restoreDialog">>, code?: string) {
   switch (code) {
     case "user_not_found":
-      return it ? "Utente non trovato." : "User not found.";
+      return t("errors.userNotFound");
     case "invalid_otp":
-      return it ? "Codice non valido o scaduto." : "Invalid or expired code.";
+      return t("errors.invalidOtp");
     case "account_not_deleted":
-      return it ? "L’account non risulta eliminato." : "This account is not deleted.";
+      return t("errors.accountNotDeleted");
     default:
-      return it ? "Impossibile ripristinare l’account." : "Unable to restore the account.";
+      return t("errors.fallback");
   }
 }
 
-export default function RestoreAccountDialog({ open, onOpenChange, locale, email }: Props) {
-  const isIt = locale === "it";
+export default function RestoreAccountDialog(props: Props) {
+  const { open, onOpenChange, email } = props;
+  const t = useTranslations("auth.restoreDialog");
+  const common = useTranslations("common");
   const [formEmail, setFormEmail] = useState(email ?? "");
   const [otpCode, setOtpCode] = useState("");
   const [isPending, setIsPending] = useState(false);
   const [step, setStep] = useState<"request" | "verify">("request");
   const [resendAvailableAt, setResendAvailableAt] = useState<number | null>(null);
-  const [now, setNow] = useState<number>(() => Date.now());
-
-  const resendSecondsLeft = useMemo(() => {
-    if (!resendAvailableAt) return 0;
-    return Math.max(0, Math.ceil((resendAvailableAt - now) / 1000));
-  }, [resendAvailableAt, now]);
+  const { secondsLeft: resendSecondsLeft } = useCountdown(resendAvailableAt, {
+    enabled: open && step === "verify",
+  });
 
   useEffect(() => {
     if (open) {
@@ -53,17 +53,11 @@ export default function RestoreAccountDialog({ open, onOpenChange, locale, email
     }
   }, [open, email]);
 
-  useEffect(() => {
-    if (!open || step !== "verify" || !resendAvailableAt) return;
-    const t = setInterval(() => setNow(Date.now()), 250);
-    return () => clearInterval(t);
-  }, [open, step, resendAvailableAt]);
-
   async function onRequestCode() {
     const e = formEmail.trim();
 
     if (!e) {
-      toast(isIt ? "Inserisci l’email" : "Enter your email");
+      toast(t("enterEmail"));
       return;
     }
 
@@ -72,15 +66,11 @@ export default function RestoreAccountDialog({ open, onOpenChange, locale, email
       await requestRestoreCode(e);
       setStep("verify");
       setResendAvailableAt(Date.now() + 30_000);
-      toast(
-        isIt
-          ? "Se l'account esiste, abbiamo inviato un codice"
-          : "If the account exists, we sent a code"
-      );
+      toast(t("requestSuccess"));
     } catch (err) {
       const e = err as ApiError;
-      toast(isIt ? "Errore" : "Error", {
-        description: mapRestoreError(locale, e.code) || e.message,
+      toast(t("errors.fallback"), {
+        description: mapRestoreError(t, e.code) || e.message,
       });
     } finally {
       setIsPending(false);
@@ -92,26 +82,26 @@ export default function RestoreAccountDialog({ open, onOpenChange, locale, email
     const code = otpCode.trim();
 
     if (!e) {
-      toast(isIt ? "Inserisci l’email" : "Enter your email");
+      toast(t("enterEmail"));
       return;
     }
 
     if (!/^\d{6}$/.test(code)) {
-      toast(isIt ? "Inserisci un codice di 6 cifre" : "Enter a 6-digit code");
+      toast(t("enterSixDigitCode"));
       return;
     }
 
     setIsPending(true);
     try {
       await restoreAccountByOtp(e, code);
-      toast(isIt ? "Account ripristinato" : "Account restored", {
-        description: isIt ? "Ora puoi effettuare il login." : "You can now log in.",
+      toast(t("restoredTitle"), {
+        description: t("restoredDescription"),
       });
       onOpenChange(false);
     } catch (err) {
       const e = err as ApiError;
-      toast(isIt ? "Errore" : "Error", {
-        description: mapRestoreError(locale, e.code) || e.message,
+      toast(t("errors.fallback"), {
+        description: mapRestoreError(t, e.code) || e.message,
       });
     } finally {
       setIsPending(false);
@@ -122,21 +112,17 @@ export default function RestoreAccountDialog({ open, onOpenChange, locale, email
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>{isIt ? "Ripristina account" : "Restore account"}</DialogTitle>
-          <DialogDescription>
-            {isIt
-              ? "Inserisci email e verifica con OTP per ripristinare l’account eliminato."
-              : "Enter your email and verify with OTP to restore your deleted account."}
-          </DialogDescription>
+          <DialogTitle>{t("title")}</DialogTitle>
+          <DialogDescription>{t("description")}</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-3">
           <div className="space-y-2">
-            <label className="text-sm font-medium">{isIt ? "Email" : "Email"}</label>
+            <label className="text-sm font-medium">{common("email")}</label>
             <Input
               value={formEmail}
               onChange={(ev) => setFormEmail(ev.target.value)}
-              placeholder="name@example.com"
+              placeholder={t("emailPlaceholder")}
               autoComplete="email"
               inputMode="email"
             />
@@ -144,7 +130,7 @@ export default function RestoreAccountDialog({ open, onOpenChange, locale, email
 
           {step === "verify" && (
             <div className="space-y-2">
-              <label className="text-sm font-medium">OTP</label>
+              <label className="text-sm font-medium">{common("otp")}</label>
               <Input
                 value={otpCode}
                 onChange={(ev) => setOtpCode(ev.target.value.replace(/\D/g, "").slice(0, 6))}
@@ -157,7 +143,7 @@ export default function RestoreAccountDialog({ open, onOpenChange, locale, email
 
         <div className="mt-4 flex justify-end gap-2">
           <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={isPending}>
-            {isIt ? "Annulla" : "Cancel"}
+            {common("cancel")}
           </Button>
           {step === "verify" && (
             <Button
@@ -166,16 +152,12 @@ export default function RestoreAccountDialog({ open, onOpenChange, locale, email
               onClick={onRequestCode}
               disabled={isPending || resendSecondsLeft > 0}
             >
-              {isIt ? "Invia di nuovo" : "Resend"}
+              {t("resend")}
               {resendSecondsLeft > 0 ? ` (${resendSecondsLeft}s)` : ""}
             </Button>
           )}
           <Button onClick={step === "request" ? onRequestCode : onRestore} disabled={isPending}>
-            {isPending
-              ? (isIt ? "Invio…" : "Sending…")
-              : step === "request"
-                ? (isIt ? "Richiedi codice" : "Request code")
-                : (isIt ? "Ripristina" : "Restore")}
+            {isPending ? t("sending") : step === "request" ? t("requestCode") : t("restore")}
           </Button>
         </div>
       </DialogContent>

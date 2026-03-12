@@ -1,12 +1,15 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams, useRouter, useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { Input } from "@/components/ui/input";
+import { useAppLocale } from "@/i18n/useAppLocale";
 import { Search } from "lucide-react";
 
 export default function HeaderSearch() {
-	const { locale } = useParams() as { locale: "it" | "en" };
+	const { locale } = useAppLocale();
+	const t = useTranslations("search.header");
 	const router = useRouter();
 	const sp = useSearchParams();
 
@@ -37,9 +40,9 @@ export default function HeaderSearch() {
 					if (e.key === "Enter") go();
 					if (e.key === "Escape") setQ("");
 				}}
-				placeholder={locale === "it" ? "Cerca articoli…" : "Search articles…"}
+				placeholder={t("placeholder")}
 				className="pl-10"
-				aria-label={locale === "it" ? "Cerca" : "Search"}
+				aria-label={t("ariaLabel")}
 			/>
 		</div>
 	);

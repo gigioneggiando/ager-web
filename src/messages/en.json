@@ -1,11 +1,429 @@
 {
   "app": { "title": "Ager" },
+  "common": {
+    "email": "Email",
+    "otp": "OTP",
+    "password": "Password",
+    "username": "Username",
+    "cancel": "Cancel",
+    "or": "Or",
+    "search": "Search"
+  },
   "nav": { "feed": "Feed", "lists": "Lists", "profile": "Profile" },
   "action": { "save": "Save", "like": "Like", "hide": "Hide" },
   "empty": { "noResults": "Nothing to see here yet" },
+  "search": {
+    "header": {
+      "placeholder": "Search articles…",
+      "ariaLabel": "Search"
+    },
+    "tagBar": {
+      "title": "Tags",
+      "loading": "Loading…",
+      "selectedTagAriaLabel": "Selected tag: {name}. Change tag.",
+      "fallbackNote": "Could not load tags from server: showing a minimal set."
+    },
+    "resultRow": {
+      "like": "Like",
+      "save": "Save",
+      "saveTo": "Save to…",
+      "share": "Share",
+      "hide": "Hide",
+      "notInterested": "Not interested"
+    },
+    "page": {
+      "title": "Search",
+      "description": "Full-text search across articles.",
+      "queryPlaceholder": "E.g. ukraine news",
+      "perPage": "Per page:",
+      "emptyPrompt": "Type a query or select a tag.",
+      "searching": "Searching…",
+      "invalidTagToast": "Unknown tag",
+      "loadTagsErrorToast": "Failed to load tags",
+      "searchFailedToast": "Search failed",
+      "invalidTag": "Unknown tag.",
+      "searchFailed": "Search failed.",
+      "requestRetryHint": "We couldn't complete the request. Please try again.",
+      "noResults": "No results.",
+      "results": "Results: {total}",
+      "pageOf": "Page {page} of {totalPages}",
+      "previous": "Previous",
+      "next": "Next",
+      "fallbackTagNames": {
+        "tech": "Technology",
+        "business": "Business",
+        "design": "Design",
+        "ai": "AI"
+      }
+    },
+    "explore": {
+      "title": "Explore",
+      "description": "Search and discover articles by tag.",
+      "queryPlaceholder": "Search…",
+      "emptyPrompt": "Select a topic to explore articles.",
+      "loading": "Loading articles…",
+      "noResults": "No articles for this topic.",
+      "results": "Results: {total}",
+      "pageOf": "Page {page} of {totalPages}",
+      "previous": "Previous",
+      "next": "Next",
+      "loadTagsErrorToast": "Failed to load tags",
+      "loadArticlesErrorToast": "Failed to load articles",
+      "fallbackTagNames": {
+        "tech": "Technology",
+        "business": "Business",
+        "design": "Design",
+        "ai": "AI"
+      }
+    }
+  },
+  "articleDetail": {
+    "backToSearch": "Back to search",
+    "languageLabel": "Language",
+    "languageNames": {
+      "it": "Italian",
+      "en": "English"
+    },
+    "actions": {
+      "openArticle": "Open article",
+      "copyLink": "Copy link",
+      "linkCopied": "Link copied",
+      "copyFailed": "Unable to copy link"
+    }
+  },
+  "layout": {
+    "header": {
+      "homeAriaLabel": "Ager home",
+      "menuAriaLabel": "Menu",
+      "notificationsComingSoon": "Notifications: coming soon",
+      "profile": "Profile",
+      "settings": "Settings",
+      "logout": "Logout",
+      "signIn": "Sign in"
+    },
+    "mobileNav": {
+      "feed": "Feed",
+      "explore": "Explore",
+      "lists": "Lists",
+      "profile": "Profile"
+    },
+    "sidebar": {
+      "ariaLabel": "Sections",
+      "forYou": "For you",
+      "latest": "Latest",
+      "top": "Top",
+      "explore": "Explore",
+      "lists": "Reading lists"
+    }
+  },
+  "lists": {
+    "addDialog": {
+      "title": "Save to a list",
+      "description": "Choose one of your reading lists to save:",
+      "loading": "Loading lists…",
+      "loadError": "Failed to load lists.",
+      "empty": "You haven't created any lists yet. Create one from the “Lists” section.",
+      "listLabel": "List",
+      "selectList": "Select a list…",
+      "selectListTitle": "Select a list",
+      "selectListDescription": "Choose a list where you want to save the article.",
+      "itemsCount": "({count} articles)",
+      "noteLabel": "Note (optional)",
+      "notePlaceholder": "Add a note to remember why you saved this article…",
+      "saved": "Article saved",
+      "savedInList": "Added to “{name}”.",
+      "savedGeneric": "Added to the selected list.",
+      "errorTitle": "Error",
+      "saveFailed": "Unable to save the article to the list.",
+      "saving": "Saving…"
+    },
+    "createDialog": {
+      "trigger": "New list",
+      "title": "Create a new list",
+      "description": "Collect articles you want to read or save for later.",
+      "nameLabel": "Name",
+      "namePlaceholder": "e.g. To read this week",
+      "nameRequiredTitle": "Name required",
+      "nameRequiredDescription": "Please enter a name for the list.",
+      "descriptionLabel": "Description (optional)",
+      "descriptionPlaceholder": "What is this list for?",
+      "visibilityLabel": "Visibility",
+      "visibilityHint": "You can change this setting later (when editing is implemented).",
+      "private": "Private",
+      "public": "Public",
+      "created": "List created",
+      "createdPublic": "The list is public.",
+      "createdPrivate": "The list is private.",
+      "errorTitle": "Error",
+      "createFailed": "Unable to create the list right now.",
+      "create": "Create"
+    },
+    "page": {
+      "title": "Your lists",
+      "empty": "You haven't created any lists yet.",
+      "loading": "Loading…",
+      "loadError": "Failed to load lists.",
+      "openListAriaLabel": "Open list {name}",
+      "itemsCount": "{count} articles",
+      "deleteConfirm": "Are you sure you want to delete this list?",
+      "deleted": "List deleted",
+      "errorTitle": "Error",
+      "deleteFailed": "Unable to delete the list",
+      "deleteAriaLabel": "Delete list",
+      "loadMore": "Load more",
+      "visibility": {
+        "public": "Public",
+        "shared": "Shared",
+        "private": "Private"
+      }
+    },
+    "detail": {
+      "invalidId": "Invalid list ID.",
+      "backToAll": "All lists",
+      "fallbackTitle": "List",
+      "createdOn": "Created on ",
+      "loading": "Loading…",
+      "loadError": "Failed to load articles.",
+      "empty": "No articles in this list yet.",
+      "removeConfirm": "Remove this article from the list?",
+      "removed": "Article removed from list",
+      "errorTitle": "Error",
+      "removeFailed": "Unable to remove article",
+      "remove": "Remove",
+      "loadMore": "Load more"
+    }
+  },
+  "interactions": {
+    "authRequiredTitle": "Sign in to continue",
+    "authRequiredDescription": "You need to be signed in to use this action.",
+    "scheduledDescription": "Action scheduled. Undo?",
+    "undo": "Undo",
+    "likeScheduled": "Like",
+    "saveScheduled": "Saved",
+    "hidden": "Article hidden",
+    "hiddenDescription": "Undo to restore the article",
+    "reported": "Reported",
+    "reportedDescription": "Thanks for your report."
+  },
+  "profile": {
+    "title": "Profile",
+    "loading": "Loading profile…",
+    "loadErrorPrefix": "Failed to load profile: ",
+    "fixHighlightedFields": "Fix highlighted fields",
+    "profileUpdated": "Profile updated",
+    "forbiddenTitle": "Operation forbidden (CSRF).",
+    "tooManyAttempts": "Too many attempts",
+    "retryAfter": "Try again in {seconds}s.",
+    "errorTitle": "Error",
+    "fillAllFields": "Fill in all fields",
+    "passwordMismatch": "Passwords do not match",
+    "passwordUpdated": "Password updated",
+    "validationErrorTitle": "Validation error",
+    "deleteConfirm": "Do you want to delete your account? This cannot be undone.",
+    "accountDeleted": "Account deleted",
+    "createdAt": "Created: ",
+    "updatedAt": "Updated: ",
+    "saveChanges": "Save changes",
+    "saving": "Saving…",
+    "changePassword": "Change password",
+    "oldPassword": "Old password",
+    "newPassword": "New password",
+    "passwordRequirements": "Requirements: at least 8 characters, 1 number, 1 special character.",
+    "confirmNewPassword": "Confirm new password",
+    "updatePassword": "Update password",
+    "updating": "Updating…",
+    "dangerZone": "Danger zone",
+    "dangerDescription": "Deleting your account will deactivate your data (soft-delete).",
+    "deleteAccount": "Delete my account",
+    "deleting": "Deleting…",
+    "fields": {
+      "username": "Username",
+      "usernamePlaceholder": "Your username",
+      "avatarUrl": "Avatar URL",
+      "language": "Language",
+      "timezone": "Timezone"
+    },
+    "validation": {
+      "usernameMax": "Maximum 30 characters.",
+      "avatarUrlMax": "Maximum 255 characters.",
+      "localeMax": "Maximum 10 characters.",
+      "timezoneMax": "Maximum 50 characters."
+    },
+    "errors": {
+      "unexpected": "Unexpected error.",
+      "unauthorized": "Session expired. Please log in again.",
+      "userNotFound": "User not found.",
+      "userDeleted": "Account is disabled.",
+      "usernameTooLong": "Username is too long.",
+      "usernameTaken": "Username already taken.",
+      "passwordNotSet": "This account has no password set.",
+      "invalidOldPassword": "Old password is incorrect.",
+      "csrfFailed": "Invalid session state. Reload the page and retry."
+    }
+  },
+  "auth": {
+    "passwordStrength": {
+      "veryWeak": "Very weak",
+      "weak": "Weak",
+      "fair": "Fair",
+      "strong": "Strong",
+      "veryStrong": "Very strong"
+    },
+    "oauth": {
+      "errorTitle": "Error",
+      "signInFailed": "Sign-in failed.",
+      "googleNotConfiguredTitle": "Google is not configured",
+      "googleNotConfiguredDescription": "Set NEXT_PUBLIC_GOOGLE_CLIENT_ID",
+      "googleUnavailableTitle": "Google unavailable",
+      "googleUnavailableDescription": "Please try again in a moment or refresh the page.",
+      "appleNotConfiguredTitle": "Apple is not configured",
+      "appleNotConfiguredDescription": "Set NEXT_PUBLIC_APPLE_CLIENT_ID and NEXT_PUBLIC_APPLE_REDIRECT_URI",
+      "appleUnavailable": "Apple unavailable",
+      "googleMissingToken": "Missing Google token",
+      "appleMissingToken": "Missing Apple token",
+      "continueWithGoogle": "Continue with Google",
+      "continueWithApple": "Continue with Apple",
+      "signingInWithApple": "Signing in with Apple…",
+      "missingEmailDescription": "{provider} didn’t share your email. To continue, sign in with an email OTP.",
+      "signInWithEmailCode": "Sign in with email code"
+    },
+    "restoreDialog": {
+      "title": "Restore account",
+      "description": "Enter your email and verify with OTP to restore your deleted account.",
+      "enterEmail": "Enter your email",
+      "enterSixDigitCode": "Enter a 6-digit code",
+      "requestSuccess": "If the account exists, we sent a code",
+      "restoredTitle": "Account restored",
+      "restoredDescription": "You can now log in.",
+      "emailPlaceholder": "name@example.com",
+      "requestCode": "Request code",
+      "restore": "Restore",
+      "resend": "Resend",
+      "sending": "Sending…",
+      "errors": {
+        "userNotFound": "User not found.",
+        "invalidOtp": "Invalid or expired code.",
+        "accountNotDeleted": "This account is not deleted.",
+        "fallback": "Unable to restore the account."
+      }
+    },
+    "login": {
+      "title": "Sign in",
+      "description": "Continue with email and a code, or with your password.",
+      "fallbackExternalEmailMissing": "Apple/Google didn’t share your email. To continue, sign in with an email OTP.",
+      "codePlaceholder": "6 digits",
+      "requestCode": "Request code",
+      "verify": "Verify",
+      "resend": "Resend",
+      "changeEmail": "Change email",
+      "useCodeInstead": "Use code instead",
+      "usePasswordInstead": "Sign in with password instead",
+      "forgotPassword": "Forgot password?",
+      "noAccount": "Don’t have an account?",
+      "signUp": "Sign up",
+      "sendLoading": "Sending...",
+      "verifyLoading": "Verifying...",
+      "signInLoading": "Signing in...",
+      "info": {
+        "codeSent": "If the account exists, you’ll receive a code by email."
+      },
+      "errors": {
+        "invalidEmail": "Enter a valid email.",
+        "invalidCode": "Enter a 6-digit code.",
+        "invalidCredentials": "Invalid credentials.",
+        "sendCodeFailed": "Unable to send the code.",
+        "signInFailed": "Unable to sign in.",
+        "enterEmail": "Enter your email.",
+        "enterPassword": "Enter your password.",
+        "checkInput": "Please check your input.",
+        "tooManyAttempts": "Too many attempts. Try again in {seconds}s.",
+        "waitBeforeRetry": "Wait {seconds}s before retrying."
+      }
+    },
+    "register": {
+      "title": "Create account",
+      "description": "We’ll email you a code to complete your registration.",
+      "codePlaceholder": "6 digits",
+      "optionalPassword": "(optional)",
+      "requestCode": "Request code",
+      "verify": "Verify",
+      "resend": "Resend",
+      "editDetails": "Edit details",
+      "alreadyHaveAccount": "Already have an account?",
+      "signIn": "Sign in",
+      "backHome": "Back to home",
+      "sendLoading": "Sending...",
+      "verifyLoading": "Verifying...",
+      "passwordHint": "If you set it: at least 8 characters, 1 number, 1 special character.",
+      "info": {
+        "codeSent": "We sent you a code by email."
+      },
+      "errors": {
+        "checkInput": "Please check your input.",
+        "tooManyAttempts": "Too many attempts. Try again in {seconds}s.",
+        "waitBeforeRetry": "Wait {seconds}s before retrying.",
+        "temporaryEmail": "Temporary email addresses are not allowed",
+        "emailAlreadyRegistered": "Email already registered.",
+        "usernameAlreadyTaken": "Username already taken.",
+        "registrationUnavailable": "Registration not available.",
+        "sendCodeFailed": "Unable to send the code.",
+        "invalidOrExpiredCode": "Invalid or expired code.",
+        "usernameMismatch": "Username doesn't match the code request (use the same one from the previous step).",
+        "fixHighlightedFields": "Please fix the highlighted fields.",
+        "registerFailed": "Register failed."
+      }
+    },
+    "forgotPassword": {
+      "title": "Forgot password",
+      "description": "You'll receive a code by email and you can set a new password.",
+      "newPassword": "New password",
+      "confirmNewPassword": "Confirm new password",
+      "requestCode": "Request code",
+      "updatePassword": "Update password",
+      "backToLogin": "Back to login",
+      "changeEmail": "Change email",
+      "codePlaceholder": "6 digits",
+      "sendLoading": "Sending...",
+      "updateLoading": "Updating...",
+      "passwordRequirements": "Requirements: at least 8 characters, 1 number, 1 special character.",
+      "info": {
+        "codeSent": "If the account exists, you’ll receive a code by email."
+      },
+      "toast": {
+        "passwordUpdated": "Password updated"
+      },
+      "errors": {
+        "invalidEmail": "Enter a valid email.",
+        "tooManyAttempts": "Too many attempts. Try again in {seconds}s.",
+        "waitBeforeRetry": "Wait {seconds}s before retrying.",
+        "sendCodeFailed": "Unable to send the code.",
+        "invalidPassword": "Invalid password.",
+        "invalidCode": "Invalid code.",
+        "invalidEmailValue": "Invalid email.",
+        "invalidRequest": "Invalid request.",
+        "checkInput": "Please check your input.",
+        "invalidOrExpiredCode": "Invalid or expired code.",
+        "accountDisabled": "Account disabled/deleted.",
+        "fixHighlightedFields": "Please fix the highlighted fields.",
+        "resetFailed": "Unable to reset password."
+      }
+    },
+    "passwordRules": {
+      "minLength": "At least 8 characters.",
+      "number": "Must include at least one number.",
+      "special": "Must include at least one special character (e.g. !@#).",
+      "invalid": "Invalid password.",
+      "mismatch": "Passwords do not match."
+    }
+  },
   "feed": {
     "tabs": { "latest": "Latest", "top": "Top", "following": "Following" },
     "topics": { "all": "All", "tech": "Tech", "business": "Business", "design": "Design", "ai": "AI" },
-    "allCaughtUp": "You're all caught up 🎉"
+    "allCaughtUp": "You're all caught up 🎉",
+    "card": {
+      "topicSearchAriaLabel": "Search: {topic}",
+      "linkCopied": "Link copied",
+      "shareFailed": "Unable to share"
+    }
   }
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
+import { useTranslations } from "next-intl";
 import { getPasswordStrength } from "@/lib/api/auth";
 import type { PasswordStrengthResponse } from "@/lib/auth/types";
 import { useDebouncedValue } from "@/lib/useDebouncedValue";
@@ -10,8 +11,8 @@ type Props = {
   locale?: "en" | "it";
 };
 
-export default function PasswordStrengthIndicator({ password, locale = "en" }: Props) {
-  const isIt = locale === "it";
+export default function PasswordStrengthIndicator({ password }: Props) {
+  const t = useTranslations("auth.passwordStrength");
   const debouncedPassword = useDebouncedValue(password, 300);
   const [strength, setStrength] = useState<PasswordStrengthResponse | null>(null);
   const [loading, setLoading] = useState(false);
@@ -49,33 +50,33 @@ export default function PasswordStrengthIndicator({ password, locale = "en" }: P
 
     const score = strength.score;
     let color = "bg-gray-300";
-    let label = isIt ? "Debole" : "Weak";
+    let label = t("weak");
     let textColor = "text-gray-600";
 
     if (score >= 4) {
       color = "bg-green-500";
-      label = isIt ? "Molto forte" : "Very strong";
+      label = t("veryStrong");
       textColor = "text-green-700";
     } else if (score === 3) {
       color = "bg-green-400";
-      label = isIt ? "Forte" : "Strong";
+      label = t("strong");
       textColor = "text-green-600";
     } else if (score === 2) {
       color = "bg-yellow-500";
-      label = isIt ? "Media" : "Fair";
+      label = t("fair");
       textColor = "text-yellow-700";
     } else if (score === 1) {
       color = "bg-orange-500";
-      label = isIt ? "Debole" : "Weak";
+      label = t("weak");
       textColor = "text-orange-700";
     } else {
       color = "bg-red-500";
-      label = isIt ? "Molto debole" : "Very weak";
+      label = t("veryWeak");
       textColor = "text-red-700";
     }
 
     return { color, label, textColor, score };
-  }, [strength, isIt]);
+  }, [strength, t]);
 
   if (!password || password.length < 1) return null;
 

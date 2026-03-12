@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useParams, useSearchParams } from "next/navigation";
+import { useTranslations } from "next-intl";
+import { useSearchParams } from "next/navigation";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Bookmark, Share2, Heart, EyeOff } from "lucide-react";
@@ -11,6 +12,7 @@ import { useInteract } from "@/features/interactions/useInteract";
 import { useQueryClient } from "@tanstack/react-query";
 import ResilientImage from "@/components/media/ResilientImage";
 import { normalizeImageUrl } from "@/lib/images/normalize";
+import { useAppLocale } from "@/i18n/useAppLocale";
 
 type Props = {
   articleId: number;
@@ -68,7 +70,8 @@ export default function SearchResultRow({
   sourceName,
   publishedAt,
 }: Props) {
-  const { locale } = useParams() as { locale: "it" | "en" };
+  const t = useTranslations("search.resultRow");
+  const { locale } = useAppLocale();
   const sp = useSearchParams();
   const qc = useQueryClient();
 
@@ -151,11 +154,11 @@ export default function SearchResultRow({
                 variant="secondary"
                 className="gap-2"
                 onClick={() => like(articleId)}
-                aria-label={locale === "it" ? "Mi piace" : "Like"}
-                title={locale === "it" ? "Mi piace" : "Like"}
+              aria-label={t("like")}
+              title={t("like")}
             >
                 <Heart className="h-4 w-4" />
-                <span className="hidden sm:inline">{locale === "it" ? "Mi piace" : "Like"}</span>
+              <span className="hidden sm:inline">{t("like")}</span>
             </Button>
 
             <Button
@@ -163,11 +166,11 @@ export default function SearchResultRow({
                 variant="secondary"
                 className="gap-2"
                 onClick={() => setAddOpen(true)}
-                aria-label={locale === "it" ? "Salva in…" : "Save to…"}
-                title={locale === "it" ? "Salva in…" : "Save to…"}
+                aria-label={t("saveTo")}
+                title={t("saveTo")}
             >
                 <Bookmark className="h-4 w-4" />
-                <span className="hidden sm:inline">{locale === "it" ? "Salva" : "Save"}</span>
+                <span className="hidden sm:inline">{t("save")}</span>
             </Button>
 
             <Button
@@ -179,11 +182,11 @@ export default function SearchResultRow({
                 const url = window.location.origin + detailHref;
                 await shareOrCopy({ title, url });
                 }}
-                aria-label={locale === "it" ? "Condividi" : "Share"}
-                title={locale === "it" ? "Condividi" : "Share"}
+                aria-label={t("share")}
+                title={t("share")}
             >
                 <Share2 className="h-4 w-4" />
-                <span className="hidden sm:inline">{locale === "it" ? "Condividi" : "Share"}</span>
+                <span className="hidden sm:inline">{t("share")}</span>
             </Button>
 
             <Button
@@ -191,11 +194,11 @@ export default function SearchResultRow({
                 variant="ghost"
                 className="ml-auto text-muted-foreground hover:text-foreground"
                 onClick={hideFromSearchOptimistic}
-                aria-label={locale === "it" ? "Nascondi" : "Hide"}
-                title={locale === "it" ? "Non mi interessa" : "Not interested"}
+                aria-label={t("hide")}
+                title={t("notInterested")}
             >
                 <EyeOff className="h-4 w-4" />
-                <span className="hidden sm:inline">{locale === "it" ? "Nascondi" : "Hide"}</span>
+                <span className="hidden sm:inline">{t("hide")}</span>
             </Button>
             </div>
         </div>
