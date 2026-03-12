@@ -49,33 +49,33 @@ export default function PasswordStrengthIndicator({ password }: Props) {
     if (!strength) return null;
 
     const score = strength.score;
-    let color = "bg-gray-300";
+    let color = "bg-muted";
     let label = t("weak");
-    let textColor = "text-gray-600";
+    let feedbackType: "success" | "warning" | "error" | "muted" = "muted";
 
     if (score >= 4) {
-      color = "bg-green-500";
+      color = "bg-green-500 dark:bg-green-400";
       label = t("veryStrong");
-      textColor = "text-green-700";
+      feedbackType = "success";
     } else if (score === 3) {
-      color = "bg-green-400";
+      color = "bg-green-400 dark:bg-green-300";
       label = t("strong");
-      textColor = "text-green-600";
+      feedbackType = "success";
     } else if (score === 2) {
-      color = "bg-yellow-500";
+      color = "bg-yellow-500 dark:bg-yellow-300";
       label = t("fair");
-      textColor = "text-yellow-700";
+      feedbackType = "warning";
     } else if (score === 1) {
-      color = "bg-orange-500";
+      color = "bg-orange-500 dark:bg-yellow-400";
       label = t("weak");
-      textColor = "text-orange-700";
+      feedbackType = "warning";
     } else {
-      color = "bg-red-500";
+      color = "bg-red-500 dark:bg-red-400";
       label = t("veryWeak");
-      textColor = "text-red-700";
+      feedbackType = "error";
     }
 
-    return { color, label, textColor, score };
+    return { color, label, feedbackType, score };
   }, [strength, t]);
 
   if (!password || password.length < 1) return null;
@@ -83,7 +83,7 @@ export default function PasswordStrengthIndicator({ password }: Props) {
   return (
     <div className="mt-2 space-y-1">
       <div className="flex items-center gap-2">
-        <div className="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden">
+        <div className="h-2 flex-1 overflow-hidden rounded-full bg-muted/70">
           {strengthInfo && (
             <div
               className={`h-full transition-all duration-300 ${strengthInfo.color}`}
@@ -91,25 +91,36 @@ export default function PasswordStrengthIndicator({ password }: Props) {
             />
           )}
           {loading && !strengthInfo && (
-            <div className="h-full bg-gray-300 animate-pulse" style={{ width: "50%" }} />
+            <div className="h-full animate-pulse bg-muted" style={{ width: "50%" }} />
           )}
         </div>
         {strengthInfo && (
-          <span className={`text-xs font-medium ${strengthInfo.textColor}`}>
+          <span
+            className="text-xs font-medium"
+            style={{
+              color: `hsl(var(--feedback-${strengthInfo.feedbackType}-fg))`
+            }}
+          >
             {strengthInfo.label}
           </span>
         )}
       </div>
 
       {strength && (strength.warnings.length > 0 || strength.suggestions.length > 0) && (
-        <div className="text-xs text-gray-600 space-y-0.5 mt-1">
+        <div className="mt-1 space-y-0.5 text-xs">
           {strength.warnings.map((w, i) => (
-            <div key={`w-${i}`} className="text-orange-600">
+            <div
+              key={`w-${i}`}
+              style={{ color: "hsl(var(--feedback-warning-fg))" }}
+            >
               ⚠️ {w}
             </div>
           ))}
           {strength.suggestions.map((s, i) => (
-            <div key={`s-${i}`} className="text-blue-600">
+            <div
+              key={`s-${i}`}
+              style={{ color: "hsl(var(--feedback-success-fg))" }}
+            >
               💡 {s}
             </div>
           ))}

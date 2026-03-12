@@ -337,8 +337,8 @@ export const PhilosophyPage = ({ locale, content: propContent }: PhilosophyPageP
               <Card key={idx} className="p-6">
                 <div className="flex gap-4">
                   <div className="flex-shrink-0">
-                    <div className="w-10 h-10 rounded-full bg-green-500/10 flex items-center justify-center">
-                      <ShieldCheck className="w-5 h-5 text-green-600" />
+                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
+                      <ShieldCheck className="h-5 w-5 text-primary" />
                     </div>
                   </div>
                   <div className="flex-1">
