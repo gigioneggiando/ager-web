@@ -132,17 +132,6 @@ export default function SearchResultRow({
   return (
     <Card className="p-3">
       <div className="flex items-start gap-3">
-        {hasImage && (
-          <div className="mt-0.5 h-14 w-14 flex-shrink-0 overflow-hidden rounded-md">
-            <ResilientImage
-              src={normalizedImageUrl!}
-              alt=""
-              width={56}
-              height={56}
-              className="h-full w-full object-cover"
-            />
-          </div>
-        )}
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
             <span className="font-medium">{sourceName}</span>
@@ -153,11 +142,26 @@ export default function SearchResultRow({
             {title}
           </Link>
           {excerpt && (
-            <p className="mt-2 line-clamp-2 text-sm leading-relaxed text-muted-foreground">
+            <p className="mt-1 line-clamp-2 text-sm leading-relaxed text-muted-foreground">
               {excerpt}
             </p>
           )}
         </div>
+        {hasImage && (
+          <div
+            className="flex-shrink-0 overflow-hidden rounded-md"
+            style={{ width: 72, height: 72, minWidth: 72 }}
+          >
+            <ResilientImage
+              src={normalizedImageUrl!}
+              alt=""
+              width={72}
+              height={72}
+              className="object-cover object-center"
+              style={{ width: 72, height: 72, display: "block" }}
+            />
+          </div>
+        )}
       </div>
 
       <div className="mt-4 border-t pt-3">

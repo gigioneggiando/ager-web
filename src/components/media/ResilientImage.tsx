@@ -22,6 +22,7 @@ export default function ResilientImage(props: Props) {
         width={typeof imageProps.width === "number" ? imageProps.width : undefined}
         height={typeof imageProps.height === "number" ? imageProps.height : undefined}
         className={imageProps.className}
+        style={imageProps.style}
         loading="lazy"
       />
     );
