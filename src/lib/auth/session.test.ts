@@ -60,11 +60,22 @@ function persistSession(
   storage.removeItem("ager.session.accessTokenExpiresAt");
 }
 
+function makeMockStorage() {
+  const store: Record<string, string> = {};
+  return {
+    _store: store,
+    getItem: (key: string) => store[key] ?? null,
+    setItem: (key: string, value: string) => { store[key] = value; },
+    removeItem: (key: string) => { delete store[key]; },
+    clear: () => { Object.keys(store).forEach((k) => delete store[k]); },
+  };
+}
+
 describe("Session Persistence", () => {
-  let mockStorage: Record<string, string>;
+  let mockStorage: ReturnType<typeof makeMockStorage>;
 
   beforeEach(() => {
-    mockStorage = {};
+    mockStorage = makeMockStorage();
     vi.clearAllTimers();
     vi.useFakeTimers();
   });
@@ -118,8 +129,8 @@ describe("Session Persistence", () => {
     });
 
     it("returns not-ready when token is missing", () => {
-      mockStorage["ager.session.userId"] = "user-123";
-      mockStorage["ager.session.accessTokenExpiresAt"] = new Date(Date.now() + 30_000).toISOString();
+      mockStorage._store["ager.session.userId"] = "user-123";
+      mockStorage._store["ager.session.accessTokenExpiresAt"] = new Date(Date.now() + 30_000).toISOString();
       // Note: accessToken is missing
 
       const session = readStoredSession(mockStorage as any);
@@ -127,8 +138,8 @@ describe("Session Persistence", () => {
     });
 
     it("returns not-ready when expiry is missing", () => {
-      mockStorage["ager.session.userId"] = "user-123";
-      mockStorage["ager.session.accessToken"] = "token-abc";
+      mockStorage._store["ager.session.userId"] = "user-123";
+      mockStorage._store["ager.session.accessToken"] = "token-abc";
       // Note: accessTokenExpiresAt is missing
 
       const session = readStoredSession(mockStorage as any);
@@ -137,22 +148,22 @@ describe("Session Persistence", () => {
 
     it("clears expired token from storage", () => {
       const pastTime = new Date(Date.now() - 60_000).toISOString();
-      mockStorage["ager.session.userId"] = "user-123";
-      mockStorage["ager.session.accessToken"] = "expired-token";
-      mockStorage["ager.session.accessTokenExpiresAt"] = pastTime;
+      mockStorage._store["ager.session.userId"] = "user-123";
+      mockStorage._store["ager.session.accessToken"] = "expired-token";
+      mockStorage._store["ager.session.accessTokenExpiresAt"] = pastTime;
 
       readStoredSession(mockStorage as any);
 
-      expect(mockStorage["ager.session.userId"]).toBeUndefined();
-      expect(mockStorage["ager.session.accessToken"]).toBeUndefined();
-      expect(mockStorage["ager.session.accessTokenExpiresAt"]).toBeUndefined();
+      expect(mockStorage._store["ager.session.userId"]).toBeUndefined();
+      expect(mockStorage._store["ager.session.accessToken"]).toBeUndefined();
+      expect(mockStorage._store["ager.session.accessTokenExpiresAt"]).toBeUndefined();
     });
 
     it("returns ready state with valid, non-expired token", () => {
       const futureTime = new Date(Date.now() + 1_000_000).toISOString();
-      mockStorage["ager.session.userId"] = "user-123";
-      mockStorage["ager.session.accessToken"] = "valid-token";
-      mockStorage["ager.session.accessTokenExpiresAt"] = futureTime;
+      mockStorage._store["ager.session.userId"] = "user-123";
+      mockStorage._store["ager.session.accessToken"] = "valid-token";
+      mockStorage._store["ager.session.accessTokenExpiresAt"] = futureTime;
 
       const session = readStoredSession(mockStorage as any);
       expect(session.ready).toBe(true);
@@ -163,9 +174,9 @@ describe("Session Persistence", () => {
 
     it("handles token expiring in exactly 15 seconds (boundary test)", () => {
       const boundaryTime = new Date(Date.now() + 15_000).toISOString();
-      mockStorage["ager.session.accessToken"] = "token";
-      mockStorage["ager.session.accessTokenExpiresAt"] = boundaryTime;
-      mockStorage["ager.session.userId"] = "user-123";
+      mockStorage._store["ager.session.accessToken"] = "token";
+      mockStorage._store["ager.session.accessTokenExpiresAt"] = boundaryTime;
+      mockStorage._store["ager.session.userId"] = "user-123";
 
       const session = readStoredSession(mockStorage as any);
       // At exactly 15s, token should be considered unusable
@@ -185,15 +196,15 @@ describe("Session Persistence", () => {
         mockStorage as any
       );
 
-      expect(mockStorage["ager.session.userId"]).toBe("user-456");
-      expect(mockStorage["ager.session.accessToken"]).toBe("token-xyz");
-      expect(mockStorage["ager.session.accessTokenExpiresAt"]).toBe(expiryTime);
+      expect(mockStorage._store["ager.session.userId"]).toBe("user-456");
+      expect(mockStorage._store["ager.session.accessToken"]).toBe("token-xyz");
+      expect(mockStorage._store["ager.session.accessTokenExpiresAt"]).toBe(expiryTime);
     });
 
     it("clears all session keys when userId is null", () => {
-      mockStorage["ager.session.userId"] = "old-user";
-      mockStorage["ager.session.accessToken"] = "old-token";
-      mockStorage["ager.session.accessTokenExpiresAt"] = "2026-01-01T00:00:00Z";
+      mockStorage._store["ager.session.userId"] = "old-user";
+      mockStorage._store["ager.session.accessToken"] = "old-token";
+      mockStorage._store["ager.session.accessTokenExpiresAt"] = "2026-01-01T00:00:00Z";
 
       persistSession(
         {
@@ -204,13 +215,13 @@ describe("Session Persistence", () => {
         mockStorage as any
       );
 
-      expect(mockStorage["ager.session.userId"]).toBeUndefined();
-      expect(mockStorage["ager.session.accessToken"]).toBeUndefined();
-      expect(mockStorage["ager.session.accessTokenExpiresAt"]).toBeUndefined();
+      expect(mockStorage._store["ager.session.userId"]).toBeUndefined();
+      expect(mockStorage._store["ager.session.accessToken"]).toBeUndefined();
+      expect(mockStorage._store["ager.session.accessTokenExpiresAt"]).toBeUndefined();
     });
 
     it("clears all session keys when accessToken is null", () => {
-      mockStorage["ager.session.userId"] = "user-123";
+      mockStorage._store["ager.session.userId"] = "user-123";
       persistSession(
         {
           userId: "user-123",
@@ -220,8 +231,8 @@ describe("Session Persistence", () => {
         mockStorage as any
       );
 
-      expect(mockStorage["ager.session.userId"]).toBeUndefined();
-      expect(mockStorage["ager.session.accessToken"]).toBeUndefined();
+      expect(mockStorage._store["ager.session.userId"]).toBeUndefined();
+      expect(mockStorage._store["ager.session.accessToken"]).toBeUndefined();
     });
 
     it("does not clear on partial null (only if all required fields are null)", () => {
@@ -235,7 +246,7 @@ describe("Session Persistence", () => {
         mockStorage as any
       );
 
-      expect(mockStorage["ager.session.userId"]).toBe("user-123");
+      expect(mockStorage._store["ager.session.userId"]).toBe("user-123");
 
       // Now update with new values
       const newExpiry = new Date(Date.now() + 7200_000).toISOString();
@@ -248,9 +259,9 @@ describe("Session Persistence", () => {
         mockStorage as any
       );
 
-      expect(mockStorage["ager.session.userId"]).toBe("user-789");
-      expect(mockStorage["ager.session.accessToken"]).toBe("token-xyz");
-      expect(mockStorage["ager.session.accessTokenExpiresAt"]).toBe(newExpiry);
+      expect(mockStorage._store["ager.session.userId"]).toBe("user-789");
+      expect(mockStorage._store["ager.session.accessToken"]).toBe("token-xyz");
+      expect(mockStorage._store["ager.session.accessTokenExpiresAt"]).toBe(newExpiry);
     });
   });
 
@@ -289,7 +300,8 @@ describe("Session Persistence", () => {
 
     it("scenario: token nearing expiry after page reload", () => {
       // Token expires in 20 seconds (more than 15s buffer)
-      const nearExpiryTime = new Date(Date.now() + 20_000).toISOString();
+      // Token expires in 60 seconds (well above the 15s buffer)
+      const nearExpiryTime = new Date(Date.now() + 60_000).toISOString();
       persistSession(
         {
           userId: "user-123",
@@ -299,19 +311,18 @@ describe("Session Persistence", () => {
         mockStorage as any
       );
 
-      // Page refreshes at exactly 20s mark
+      // After 10s: 50s remain → still ready (> 15s buffer)
       vi.advanceTimersByTime(10_000);
       let session = readStoredSession(mockStorage as any);
       expect(session.ready).toBe(true);
 
-      // Advance more to near expiry
-      vi.advanceTimersByTime(5_500);
+      // After another 30s: 20s remain → still ready (> 15s buffer)
+      vi.advanceTimersByTime(30_000);
       session = readStoredSession(mockStorage as any);
-      // Still good (>15s buffer)
       expect(session.ready).toBe(true);
 
-      // Advance to past expiry
-      vi.advanceTimersByTime(5_000);
+      // After another 10s: 10s remain → NOT ready (within 15s buffer)
+      vi.advanceTimersByTime(10_000);
       session = readStoredSession(mockStorage as any);
       expect(session.ready).toBe(false);
     });
