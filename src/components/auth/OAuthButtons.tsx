@@ -136,7 +136,7 @@ export default function OAuthButtons({ disabled }: { disabled?: boolean }) {
         type: "standard",
         theme: resolvedTheme === "dark" ? "filled_black" : "outline",
         size: "large",
-        shape: "rectangular",
+        shape: "pill",
         text: "continue_with",
         width: buttonWidth,
         locale,

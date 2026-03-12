@@ -79,7 +79,9 @@ export default function SearchResultRow({
   const [addOpen, setAddOpen] = useState(false);
 
   const detailHref = `/${locale}/articles/${articleId}`;
-  const normalizedImageUrl = normalizeImageUrl(imageUrl, sourceUrl ?? detailHref);
+  const siteOrigin = (process.env.NEXT_PUBLIC_SITE_URL ?? "").replace(/\/+$/, "");
+  const detailAbsoluteUrl = `${siteOrigin || "https://www.agerculture.com"}${detailHref}`;
+  const normalizedImageUrl = normalizeImageUrl(imageUrl, sourceUrl ?? detailAbsoluteUrl);
   const hasImage = !!normalizedImageUrl;
 
   // Reuse your existing interaction hook (server calls + undo toast)

@@ -30,7 +30,7 @@ export default function TagBar(props: {
   const selectedName = selectedTag ? tags.find((t) => t.slug === selectedTag)?.name ?? selectedTag : null;
 
   return (
-    <div className="mt-4">
+    <div className="mt-4 max-w-full overflow-hidden">
       <div className="mb-2 flex items-center justify-between">
         <div className="text-xs text-muted-foreground">
           {t("title")}
@@ -49,7 +49,7 @@ export default function TagBar(props: {
               type="button"
               variant="secondary"
               size="sm"
-              className="max-w-full rounded-full gap-2"
+              className="w-full max-w-[18rem] justify-between rounded-full gap-2"
               aria-label={t("selectedTagAriaLabel", { name: selectedName ?? "" })}
             >
               <span className="truncate max-w-[14rem]">{selectedName}</span>
@@ -62,7 +62,7 @@ export default function TagBar(props: {
             align="start"
             sideOffset={8}
             collisionPadding={16}
-            className="w-[calc(100vw-2rem)] min-w-0 max-w-sm max-h-[min(20rem,calc(100vh-7rem))] overflow-y-auto sm:w-[min(22rem,calc(100vw-2rem))] sm:max-w-[calc(100vw-2rem)]"
+            className="w-[min(22rem,calc(100vw-2rem))] min-w-0 max-w-[calc(100vw-2rem)] max-h-80 overflow-y-auto"
           >
             {tags.map((t) => {
               const selected = selectedTag === t.slug;
@@ -77,7 +77,7 @@ export default function TagBar(props: {
           </DropdownMenuContent>
         </DropdownMenu>
       ) : (
-        <div className="flex gap-2 overflow-x-auto pb-1">
+        <div className="flex max-w-full flex-wrap gap-2">
           {tags.map((t) => {
             const selected = selectedTag === t.slug;
             return (
@@ -85,9 +85,9 @@ export default function TagBar(props: {
                 key={t.slug}
                 asChild
                 variant={selected ? "default" : "secondary"}
-                className="flex-shrink-0 rounded-full"
+                className="max-w-full rounded-full"
               >
-                <Link href={hrefForTag(t.slug)} aria-current={selected ? "page" : undefined}>
+                <Link href={hrefForTag(t.slug)} aria-current={selected ? "page" : undefined} className="truncate">
                   {t.name}
                 </Link>
               </Badge>
