@@ -62,7 +62,7 @@ export default function TagBar(props: {
             align="start"
             sideOffset={8}
             collisionPadding={16}
-            className="w-[min(22rem,calc(100vw-2rem))] min-w-0 max-w-[calc(100vw-2rem)] max-h-80 overflow-y-auto"
+            className="w-[min(22rem,calc(100vw-2rem))] min-w-0 max-w-[calc(100vw-2rem)] max-h-[60vh] overflow-y-auto"
           >
             {tags.map((t) => {
               const selected = selectedTag === t.slug;

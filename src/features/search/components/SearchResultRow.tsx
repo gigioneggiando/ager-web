@@ -164,7 +164,7 @@ export default function SearchResultRow({
         )}
       </div>
 
-      <div className="mt-4 border-t pt-3">
+      <div className="mt-5 border-t pt-4">
         <div className="flex flex-wrap items-center gap-3">
           <Button
             size="sm"
