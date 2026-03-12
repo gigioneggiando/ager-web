@@ -23,6 +23,7 @@ function clampPageSize(n: number) {
 
 export default function ExplorePageClient() {
   const t = useTranslations("search.explore");
+  const tTagNames = useTranslations("search.tagNames");
   const { locale } = useAppLocale();
   const router = useRouter();
   const sp = useSearchParams();
@@ -48,7 +49,38 @@ export default function ExplorePageClient() {
     ];
   }, [t]);
 
-  const tagsToRender = tagsQuery.isError ? fallbackTags : tagsQuery.data ?? [];
+  const tagNameBySlug = useMemo((): Record<string, string> => ({
+    tecnologia: tTagNames("tecnologia"),
+    business: tTagNames("business"),
+    design: tTagNames("design"),
+    ai: tTagNames("ai"),
+    politica: tTagNames("politica"),
+    scienza: tTagNames("scienza"),
+    economia: tTagNames("economia"),
+    finanza: tTagNames("finanza"),
+    salute: tTagNames("salute"),
+    clima: tTagNames("clima"),
+    energia: tTagNames("energia"),
+    cybersecurity: tTagNames("cybersecurity"),
+    spazio: tTagNames("spazio"),
+    startup: tTagNames("startup"),
+    cultura: tTagNames("cultura"),
+    cucina: tTagNames("cucina"),
+    geopolitica: tTagNames("geopolitica"),
+    filosofia: tTagNames("filosofia"),
+    sport: tTagNames("sport"),
+    viaggi: tTagNames("viaggi"),
+    educazione: tTagNames("educazione"),
+    psicologia: tTagNames("psicologia"),
+    intrattenimento: tTagNames("intrattenimento"),
+    moda: tTagNames("moda"),
+    auto: tTagNames("auto"),
+  }), [tTagNames]);
+
+  const tagsToRender = (tagsQuery.isError ? fallbackTags : tagsQuery.data ?? []).map((tag) => ({
+    ...tag,
+    name: tagNameBySlug[tag.slug] ?? tag.name,
+  }));
 
   const hrefForTag = (slug: string | null) => {
     const next = new URLSearchParams(sp.toString());

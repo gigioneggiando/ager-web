@@ -62,7 +62,7 @@ export default function TagBar(props: {
             align="start"
             sideOffset={8}
             collisionPadding={16}
-            className="w-[calc(100vw-2rem)] min-w-0 max-w-sm max-h-[min(20rem,calc(100vh-7rem))] sm:w-[min(22rem,calc(100vw-2rem))] sm:max-w-[calc(100vw-2rem)]"
+            className="w-[calc(100vw-2rem)] min-w-0 max-w-sm max-h-[min(20rem,calc(100vh-7rem))] overflow-y-auto sm:w-[min(22rem,calc(100vw-2rem))] sm:max-w-[calc(100vw-2rem)]"
           >
             {tags.map((t) => {
               const selected = selectedTag === t.slug;
@@ -77,7 +77,7 @@ export default function TagBar(props: {
           </DropdownMenuContent>
         </DropdownMenu>
       ) : (
-        <div className="flex flex-wrap gap-2">
+        <div className="flex gap-2 overflow-x-auto pb-1">
           {tags.map((t) => {
             const selected = selectedTag === t.slug;
             return (
@@ -85,7 +85,7 @@ export default function TagBar(props: {
                 key={t.slug}
                 asChild
                 variant={selected ? "default" : "secondary"}
-                className="rounded-full"
+                className="flex-shrink-0 rounded-full"
               >
                 <Link href={hrefForTag(t.slug)} aria-current={selected ? "page" : undefined}>
                   {t.name}

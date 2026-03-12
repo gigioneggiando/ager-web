@@ -13,6 +13,33 @@
   "action": { "save": "Save", "like": "Like", "hide": "Hide" },
   "empty": { "noResults": "Nothing to see here yet" },
   "search": {
+    "tagNames": {
+      "tecnologia": "Technology",
+      "business": "Business",
+      "design": "Design",
+      "ai": "AI",
+      "politica": "Politics",
+      "scienza": "Science",
+      "economia": "Economy",
+      "finanza": "Finance",
+      "salute": "Health",
+      "clima": "Climate",
+      "energia": "Energy",
+      "cybersecurity": "Cybersecurity",
+      "spazio": "Space",
+      "startup": "Startup",
+      "cultura": "Culture",
+      "cucina": "Food",
+      "geopolitica": "Geopolitics",
+      "filosofia": "Philosophy",
+      "sport": "Sport",
+      "viaggi": "Travel",
+      "educazione": "Education",
+      "psicologia": "Psychology",
+      "intrattenimento": "Entertainment",
+      "moda": "Fashion",
+      "auto": "Automotive"
+    },
     "header": {
       "placeholder": "Search articles…",
       "ariaLabel": "Search"

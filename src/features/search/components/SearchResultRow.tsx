@@ -128,101 +128,97 @@ export default function SearchResultRow({
   }
 
   return (
-    <Card className={["grid gap-3 p-3", hasImage ? "sm:grid-cols-[1fr,200px]" : ""].join(" ")}>
-      <div className="min-w-0">
-        <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-          <span className="font-medium">{sourceName}</span>
-          <span>•</span>
-          <span>{rel}</span>
-        </div>
-
-        <Link href={detailHref} className="mt-1 block font-medium hover:underline">
-          {title}
-        </Link>
-
-        {excerpt && (
-            <p className="mt-2 line-clamp-2 text-sm leading-relaxed text-muted-foreground">
-                {excerpt}
-            </p>
+    <Card className="p-3">
+      <div className="flex items-start gap-3">
+        {hasImage && (
+          <div className="mt-0.5 h-14 w-14 flex-shrink-0 overflow-hidden rounded-md">
+            <ResilientImage
+              src={normalizedImageUrl!}
+              alt=""
+              width={56}
+              height={56}
+              className="h-full w-full object-cover"
+            />
+          </div>
         )}
-
-        {/* Actions row (Like / Save / Share / Hide) */}
-        <div className="mt-4 border-t pt-3">
-            <div className="flex flex-wrap items-center gap-3">
-            <Button
-                size="sm"
-                variant="secondary"
-                className="gap-2"
-                onClick={() => like(articleId)}
-              aria-label={t("like")}
-              title={t("like")}
-            >
-                <Heart className="h-4 w-4" />
-              <span className="hidden sm:inline">{t("like")}</span>
-            </Button>
-
-            <Button
-                size="sm"
-                variant="secondary"
-                className="gap-2"
-                onClick={() => setAddOpen(true)}
-                aria-label={t("saveTo")}
-                title={t("saveTo")}
-            >
-                <Bookmark className="h-4 w-4" />
-                <span className="hidden sm:inline">{t("save")}</span>
-            </Button>
-
-            <Button
-                size="sm"
-                variant="secondary"
-                className="gap-2"
-                onClick={async () => {
-                // shares your internal detail route (bookmarkable)
-                const url = window.location.origin + detailHref;
-                await shareOrCopy({ title, url });
-                }}
-                aria-label={t("share")}
-                title={t("share")}
-            >
-                <Share2 className="h-4 w-4" />
-                <span className="hidden sm:inline">{t("share")}</span>
-            </Button>
-
-            <Button
-                size="sm"
-                variant="ghost"
-                className="ml-auto text-muted-foreground hover:text-foreground"
-                onClick={hideFromSearchOptimistic}
-                aria-label={t("hide")}
-                title={t("notInterested")}
-            >
-                <EyeOff className="h-4 w-4" />
-                <span className="hidden sm:inline">{t("hide")}</span>
-            </Button>
-            </div>
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+            <span className="font-medium">{sourceName}</span>
+            <span>•</span>
+            <span>{rel}</span>
+          </div>
+          <Link href={detailHref} className="mt-1 block font-medium hover:underline">
+            {title}
+          </Link>
+          {excerpt && (
+            <p className="mt-2 line-clamp-2 text-sm leading-relaxed text-muted-foreground">
+              {excerpt}
+            </p>
+          )}
         </div>
-
-        <AddToListDialog
-          open={addOpen}
-          onOpenChange={setAddOpen}
-          articleId={articleId}
-          articleTitle={title}
-        />
       </div>
 
-      {hasImage && (
-        <div className="w-full">
-          <ResilientImage
-            src={normalizedImageUrl!}
-            alt=""
-            width={800}
-            height={450}
-            className="h-40 w-full rounded-md object-cover sm:h-28"
-            sizes="(max-width: 640px) 100vw, 200px"
-          />
+      <div className="mt-4 border-t pt-3">
+        <div className="flex flex-wrap items-center gap-3">
+          <Button
+            size="sm"
+            variant="secondary"
+            className="gap-2"
+            onClick={() => like(articleId)}
+            aria-label={t("like")}
+            title={t("like")}
+          >
+            <Heart className="h-4 w-4" />
+            <span className="hidden sm:inline">{t("like")}</span>
+          </Button>
+
+          <Button
+            size="sm"
+            variant="secondary"
+            className="gap-2"
+            onClick={() => setAddOpen(true)}
+            aria-label={t("saveTo")}
+            title={t("saveTo")}
+          >
+            <Bookmark className="h-4 w-4" />
+            <span className="hidden sm:inline">{t("save")}</span>
+          </Button>
+
+          <Button
+            size="sm"
+            variant="secondary"
+            className="gap-2"
+            onClick={async () => {
+              const url = window.location.origin + detailHref;
+              await shareOrCopy({ title, url });
+            }}
+            aria-label={t("share")}
+            title={t("share")}
+          >
+            <Share2 className="h-4 w-4" />
+            <span className="hidden sm:inline">{t("share")}</span>
+          </Button>
+
+          <Button
+            size="sm"
+            variant="ghost"
+            className="ml-auto text-muted-foreground hover:text-foreground"
+            onClick={hideFromSearchOptimistic}
+            aria-label={t("hide")}
+            title={t("notInterested")}
+          >
+            <EyeOff className="h-4 w-4" />
+            <span className="hidden sm:inline">{t("hide")}</span>
+          </Button>
         </div>
-      )}
+      </div>
+
+      <AddToListDialog
+        open={addOpen}
+        onOpenChange={setAddOpen}
+        articleId={articleId}
+        articleTitle={title}
+      />
     </Card>
   );
 }
