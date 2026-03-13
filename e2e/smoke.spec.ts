@@ -36,9 +36,7 @@ test("system dark preference is detected on first load", async ({
   await expect(darkPage.locator("html")).toHaveClass(/dark/);
 
   // Verify localStorage is populated with system preference
-  const storedTheme = await darkPage.evaluate(() =>
-    window.localStorage.getItem("ager-theme")
-  );
+  await darkPage.evaluate(() => window.localStorage.getItem("ager-theme"));
   // Can be "dark" or "system" depending on implementation, but dark class should be applied
   await expect(darkPage.locator("html")).toHaveClass(/dark/);
 
