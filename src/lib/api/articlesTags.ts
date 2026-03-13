@@ -18,6 +18,7 @@ export async function searchByTag(args: {
   tag: string;
   page?: number;
   pageSize?: number;
+  locale?: string;
 }): Promise<ArticleSearchResponse> {
   const tag = args.tag.trim();
   const page = args.page && args.page > 0 ? args.page : 1;
@@ -30,6 +31,7 @@ export async function searchByTag(args: {
   );
   url.searchParams.set("page", String(page));
   url.searchParams.set("pageSize", String(pageSize));
+  if (args.locale) url.searchParams.set("lang", args.locale);
 
   const data = await requestJson<ArticleSearchResponse>(url.toString(), {
     method: "GET",

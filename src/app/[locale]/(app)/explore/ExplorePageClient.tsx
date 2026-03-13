@@ -92,8 +92,8 @@ export default function ExplorePageClient() {
   };
 
   const resultsQuery = useQuery({
-    queryKey: ["exploreTagSearch", selectedTag, page, pageSize],
-    queryFn: () => searchByTag({ tag: selectedTag!, page, pageSize }),
+    queryKey: ["exploreTagSearch", selectedTag, page, pageSize, locale],
+    queryFn: () => searchByTag({ tag: selectedTag!, page, pageSize, locale }),
     enabled: selectedTag !== null,
     staleTime: 20_000,
     retry: 1,

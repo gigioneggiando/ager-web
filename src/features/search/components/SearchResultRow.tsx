@@ -164,7 +164,7 @@ export default function SearchResultRow({
         )}
       </div>
 
-      <div style={{ height: 1, background: "hsl(var(--border))", margin: "1rem 0 0.75rem" }} />
+      <div style={{ height: 1, background: "hsl(var(--border))", margin: "0.25rem 0 0.01rem" }} />
       <div>
         <div className="flex flex-wrap items-center gap-3">
           <Button

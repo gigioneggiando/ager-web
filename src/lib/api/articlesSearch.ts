@@ -54,6 +54,7 @@ export async function searchArticles(args: {
   page?: number;
   pageSize?: number;
   accessToken?: string;
+  locale?: string;
 }): Promise<ArticleSearchResponse> {
   const q = args.q.trim();
   const page = args.page && args.page > 0 ? args.page : 1;
@@ -64,6 +65,7 @@ export async function searchArticles(args: {
   url.searchParams.set("q", q);
   url.searchParams.set("page", String(page));
   url.searchParams.set("pageSize", String(pageSize));
+  if (args.locale) url.searchParams.set("lang", args.locale);
 
   const data = await requestJson<ArticleSearchResponse>(url.toString(), {
     method: "GET",
@@ -82,6 +84,7 @@ export async function searchArticlesPublic(args: {
   q: string;
   page?: number;
   pageSize?: number;
+  locale?: string;
 }): Promise<ArticleSearchResponse> {
   return searchArticles(args);
 }

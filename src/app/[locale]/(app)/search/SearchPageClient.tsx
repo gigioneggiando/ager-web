@@ -137,16 +137,16 @@ export default function SearchPageClient() {
   }
 
   const textQuery = useQuery({
-    queryKey: ["articleSearchPublic", q, page, pageSize],
-    queryFn: () => searchArticlesPublic({ q, page, pageSize }),
+    queryKey: ["articleSearchPublic", q, page, pageSize, locale],
+    queryFn: () => searchArticlesPublic({ q, page, pageSize, locale }),
     enabled: selectedTag === null && q.length > 0,
     staleTime: 20_000,
     retry: 1,
   });
 
   const tagQuery = useQuery({
-    queryKey: ["articleTagSearch", selectedTag, page, pageSize],
-    queryFn: () => searchByTag({ tag: selectedTag!, page, pageSize }),
+    queryKey: ["articleTagSearch", selectedTag, page, pageSize, locale],
+    queryFn: () => searchByTag({ tag: selectedTag!, page, pageSize, locale }),
     enabled: selectedTag !== null,
     staleTime: 20_000,
     retry: 1,
