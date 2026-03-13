@@ -134,7 +134,7 @@ export default function OAuthButtons({ disabled }: { disabled?: boolean }) {
       const buttonWidth = Math.max(200, Math.min(400, w || 400));
       g.accounts.id.renderButton(googleButtonEl.current, {
         type: "standard",
-        theme: resolvedTheme === "dark" ? "filled_black" : "outline",
+        theme: "filled_black",
         size: "large",
         shape: "pill",
         text: "continue_with",
@@ -211,7 +211,7 @@ export default function OAuthButtons({ disabled }: { disabled?: boolean }) {
     <div className="space-y-2">
       {showGoogle && (
         googleClientId ? (
-          <div className="relative overflow-hidden rounded-[4px] border border-input">
+          <div className="relative overflow-hidden rounded-full border border-input bg-black">
             <div
               ref={googleButtonEl}
               className={disabled || pending !== null ? "pointer-events-none opacity-60" : ""}
