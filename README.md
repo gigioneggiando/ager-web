@@ -21,6 +21,7 @@ Required:
 Recommended:
 
 - `API_BASE_URL` - backend API base URL used by Next route handlers (server-only)
+- `NEXT_PUBLIC_HCAPTCHA_SITE_KEY` - public site key for the registration CAPTCHA widget
 
 ### 3) Run locally
 

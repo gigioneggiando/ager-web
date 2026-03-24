@@ -23,7 +23,12 @@ type SessionState = {
 type AuthActions = {
   requestLoginOtp: (email: string) => Promise<void>;
   login: (payload: { email: string; password?: string | null; otpCode?: string | null }) => Promise<void>;
-  requestRegisterOtp: (payload: { username: string; email: string }) => Promise<void>;
+  requestRegisterOtp: (payload: {
+    username: string;
+    email: string;
+    honeypot?: string;
+    captchaToken?: string | null;
+  }) => Promise<void>;
   register: (payload: { username: string; email: string; otpCode: string; password?: string | null }) => Promise<void>;
   oauthGoogle: (idToken: string) => Promise<void>;
   oauthApple: (idToken: string) => Promise<void>;
@@ -145,8 +150,16 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     updateSession({ ready: true, userId: data.userId, accessToken: data.accessToken, accessTokenExpiresAt: data.accessTokenExpiresAt });
   }, [updateSession]);
 
-  const requestRegisterOtp = useCallback(async (payload: { username: string; email: string }) => {
-    await apiRequestRegisterOtp(payload.username, payload.email);
+  const requestRegisterOtp = useCallback(async (payload: {
+    username: string;
+    email: string;
+    honeypot?: string;
+    captchaToken?: string | null;
+  }) => {
+    await apiRequestRegisterOtp(payload.username, payload.email, {
+      honeypot: payload.honeypot,
+      captchaToken: payload.captchaToken ?? null,
+    });
   }, []);
 
   const register = useCallback(async (payload: { username: string; email: string; otpCode: string; password?: string | null }) => {

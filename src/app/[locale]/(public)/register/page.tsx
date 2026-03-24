@@ -21,6 +21,7 @@ import { useMemo, useState } from "react";
 import { ApiError, getProblemDetailsFieldErrors, getRetryAfterSeconds } from "@/lib/api/errors";
 import OAuthButtons from "@/components/auth/OAuthButtons";
 import PasswordStrengthIndicator from "@/components/auth/PasswordStrengthIndicator";
+import HCaptchaWidget from "@/components/auth/HCaptchaWidget";
 import { useAppLocale } from "@/i18n/useAppLocale";
 import { useCountdown } from "@/lib/useCountdown";
 
@@ -30,6 +31,7 @@ const REQUEST_SCHEMA = z.object({
 });
 
 const RESEND_COOLDOWN_MS = 30_000;
+const HONEYPOT_FIELD_NAME = "companyWebsite";
 
 export default function RegisterPage() {
   const t = useTranslations("auth.register");
@@ -38,6 +40,8 @@ export default function RegisterPage() {
   const { requestRegisterOtp, register } = useAuthActions();
   const router = useRouter();
   const { locale } = useAppLocale();
+  const hCaptchaSiteKey = process.env.NEXT_PUBLIC_HCAPTCHA_SITE_KEY?.trim() ?? "";
+  const captchaEnabled = hCaptchaSiteKey.length > 0;
 
   const verifySchema = useMemo(() => {
     const passwordMessages = {
@@ -76,6 +80,8 @@ export default function RegisterPage() {
   const [email, setEmail] = useState("");
   const [otpCode, setOtpCode] = useState("");
   const [password, setPassword] = useState("");
+  const [honeypot, setHoneypot] = useState("");
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   const [resendAvailableAt, setResendAvailableAt] = useState<number | null>(null);
   const [rateLimitUntil, setRateLimitUntil] = useState<number | null>(null);
 
@@ -97,9 +103,19 @@ export default function RegisterPage() {
       return;
     }
 
+    if (captchaEnabled && !captchaToken) {
+      setErrors(t("errors.sendCodeFailed"));
+      return;
+    }
+
     setPending(true);
     try {
-      await requestRegisterOtp({ username: parsed.data.username, email: parsed.data.email });
+      await requestRegisterOtp({
+        username: parsed.data.username,
+        email: parsed.data.email,
+        honeypot,
+        captchaToken,
+      });
       setInfo(t("info.codeSent"));
       setStep("verify");
       setResendAvailableAt(Date.now() + RESEND_COOLDOWN_MS);
@@ -177,7 +193,7 @@ export default function RegisterPage() {
     setInfo(null);
     setPending(true);
     try {
-      await requestRegisterOtp({ username, email });
+      await requestRegisterOtp({ username, email, honeypot, captchaToken });
       setInfo(t("info.codeSent"));
       setResendAvailableAt(Date.now() + RESEND_COOLDOWN_MS);
     } catch (error: unknown) {
@@ -243,6 +259,26 @@ export default function RegisterPage() {
                     disabled={pending}
                   />
                 </div>
+                <div className="absolute left-[-10000px] top-auto h-px w-px overflow-hidden opacity-0" aria-hidden="true">
+                  <label htmlFor={HONEYPOT_FIELD_NAME}>{HONEYPOT_FIELD_NAME}</label>
+                  <input
+                    id={HONEYPOT_FIELD_NAME}
+                    name={HONEYPOT_FIELD_NAME}
+                    tabIndex={-1}
+                    autoComplete="off"
+                    value={honeypot}
+                    onChange={(event) => setHoneypot(event.target.value)}
+                  />
+                </div>
+                {captchaEnabled && (
+                  <div className="space-y-2">
+                    <HCaptchaWidget
+                      siteKey={hCaptchaSiteKey}
+                      onTokenChange={setCaptchaToken}
+                      disabled={pending}
+                    />
+                  </div>
+                )}
                 {info && <p className="text-sm text-muted-foreground">{info}</p>}
                 {isRateLimited && (
                   <p className="text-sm text-muted-foreground">
@@ -250,7 +286,11 @@ export default function RegisterPage() {
                   </p>
                 )}
                 {errors && <p className="text-sm text-destructive">{errors}</p>}
-                <Button type="submit" disabled={pending || isRateLimited} className="w-full">
+                <Button
+                  type="submit"
+                  disabled={pending || isRateLimited || (captchaEnabled && !captchaToken)}
+                  className="w-full"
+                >
                   {pending ? t("sendLoading") : t("requestCode")}
                 </Button>
               </form>
@@ -301,6 +341,15 @@ export default function RegisterPage() {
                   <PasswordStrengthIndicator password={password} locale={locale} />
                   <p className="mt-1 text-xs text-muted-foreground">{t("passwordHint")}</p>
                 </div>
+                {captchaEnabled && (
+                  <div className="space-y-2">
+                    <HCaptchaWidget
+                      siteKey={hCaptchaSiteKey}
+                      onTokenChange={setCaptchaToken}
+                      disabled={pending}
+                    />
+                  </div>
+                )}
                 {info && <p className="text-sm text-muted-foreground">{info}</p>}
                 {isRateLimited && (
                   <p className="text-sm text-muted-foreground">
@@ -316,7 +365,7 @@ export default function RegisterPage() {
                   <Button
                     type="button"
                     variant="secondary"
-                    disabled={pending || isRateLimited || !canResend}
+                    disabled={pending || isRateLimited || !canResend || (captchaEnabled && !captchaToken)}
                     onClick={onResend}
                     className="flex-1"
                   >

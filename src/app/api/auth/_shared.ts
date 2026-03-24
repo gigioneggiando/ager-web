@@ -57,6 +57,21 @@ export function appendObservabilityHeaders(
   return headers;
 }
 
+export function appendForwardedHeaders(
+  headers: Record<string, string>,
+  req: Request
+): Record<string, string> {
+  const forwardedFor = sanitizeHeaderValue(req.headers.get("x-forwarded-for"));
+  const forwardedProto = sanitizeHeaderValue(req.headers.get("x-forwarded-proto"));
+  const forwardedHost = sanitizeHeaderValue(req.headers.get("x-forwarded-host"));
+
+  if (forwardedFor) headers["x-forwarded-for"] = forwardedFor;
+  if (forwardedProto) headers["x-forwarded-proto"] = forwardedProto;
+  if (forwardedHost) headers["x-forwarded-host"] = forwardedHost;
+
+  return headers;
+}
+
 export function logProxyEvent(
   severity: "Information" | "Warning" | "Error",
   eventName: string,

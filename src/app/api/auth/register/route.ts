@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { setRefreshCookie } from "@/lib/auth/cookie";
 import type { AuthResultDto, RegisterRequest } from "@/lib/auth/types";
 import {
+  appendForwardedHeaders,
   appendObservabilityHeaders,
   createProxyRequestContext,
   getApiBase,
@@ -19,7 +20,10 @@ export async function POST(req: Request) {
 
   const res = await fetch(`${BACKEND_AUTH}/register`, {
     method: "POST",
-    headers: appendObservabilityHeaders({ "Content-Type": "application/json" }, requestContext),
+    headers: appendForwardedHeaders(
+      appendObservabilityHeaders({ "Content-Type": "application/json" }, requestContext),
+      req
+    ),
     body: JSON.stringify(body),
   });
 

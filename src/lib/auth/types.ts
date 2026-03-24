@@ -34,6 +34,8 @@ export type RegisterRequest = {
 export type RequestRegisterOtpCodeRequest = {
   username: string;
   email: string;
+  honeypot?: string;
+  captchaToken?: string | null;
 };
 
 export type RefreshTokenRequest = {

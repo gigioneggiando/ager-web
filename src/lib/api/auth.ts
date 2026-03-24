@@ -132,10 +132,19 @@ export async function loginWithPassword(email: string, password: string): Promis
   );
 }
 
-export async function requestRegisterOtp(username: string, email: string): Promise<void> {
+export async function requestRegisterOtp(
+  username: string,
+  email: string,
+  options?: { honeypot?: string; captchaToken?: string | null }
+): Promise<void> {
   await requestVoid("/api/auth/register/request-code", {
     method: "POST",
-    body: { username, email } satisfies RequestRegisterOtpCodeRequest,
+    body: {
+      username,
+      email,
+      honeypot: options?.honeypot ?? "",
+      captchaToken: options?.captchaToken ?? null,
+    } satisfies RequestRegisterOtpCodeRequest,
   });
 }
 

@@ -5,16 +5,20 @@ import { refresh, storeRefreshToken } from "@/lib/api/auth";
 const { requestJsonMock } = vi.hoisted(() => ({
   requestJsonMock: vi.fn(),
 }));
+const { requestVoidMock } = vi.hoisted(() => ({
+  requestVoidMock: vi.fn(),
+}));
 
 vi.mock("@/lib/api/request", () => ({
   requestJson: requestJsonMock,
-  requestVoid: vi.fn(),
+  requestVoid: requestVoidMock,
 }));
 
-describe("auth refresh", () => {
+describe("auth api", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
     requestJsonMock.mockReset();
+    requestVoidMock.mockReset();
     window.localStorage.clear();
     storeRefreshToken(null, null);
   });
@@ -60,6 +64,30 @@ describe("auth refresh", () => {
         method: "POST",
         credentials: "same-origin",
         cache: "no-store",
+      })
+    );
+  });
+
+  it("sends honeypot and captcha token with register OTP requests", async () => {
+    requestVoidMock.mockResolvedValue(undefined);
+
+    const { requestRegisterOtp } = await import("@/lib/api/auth");
+
+    await requestRegisterOtp("new_user", "new@example.com", {
+      honeypot: "",
+      captchaToken: "captcha-ok",
+    });
+
+    expect(requestVoidMock).toHaveBeenCalledWith(
+      "/api/auth/register/request-code",
+      expect.objectContaining({
+        method: "POST",
+        body: {
+          username: "new_user",
+          email: "new@example.com",
+          honeypot: "",
+          captchaToken: "captcha-ok",
+        },
       })
     );
   });

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import type { RequestRegisterOtpCodeRequest } from "@/lib/auth/types";
-import { getApiBase, toProxyResponse } from "@/app/api/auth/_shared";
+import { appendForwardedHeaders, getApiBase, toProxyResponse } from "@/app/api/auth/_shared";
 
 const API_BASE = getApiBase();
 const BACKEND_AUTH = `${API_BASE}/api/auth`;
@@ -10,7 +10,7 @@ export async function POST(req: Request) {
 
   const res = await fetch(`${BACKEND_AUTH}/register/request-code`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: appendForwardedHeaders({ "Content-Type": "application/json" }, req),
     body: JSON.stringify(body),
   });
 
