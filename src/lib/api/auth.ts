@@ -267,6 +267,7 @@ export async function logout(accessToken: string | null, refreshToken?: string):
       method: "POST",
       body: tokenToUse ? { refreshToken: tokenToUse } : undefined,
       headers,
+      retryOnAuthError: false,
     });
   } finally {
     clearStoredRefreshToken();

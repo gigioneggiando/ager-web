@@ -1,11 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ApiError } from "@/lib/api/errors";
-import { requestJson, requestMaybeJson, requestVoid } from "@/lib/api/request";
+import { configureAuthRetryHandlers, requestJson, requestMaybeJson, requestVoid } from "@/lib/api/request";
 
 describe("api request helpers", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
+    configureAuthRetryHandlers(null);
   });
 
   it("adds auth and json headers when sending a body", async () => {
@@ -73,11 +74,112 @@ describe("api request helpers", () => {
     );
 
     await expect(requestJson("/api/forbidden")).rejects.toEqual(
-      expect.objectContaining<ApiError>({
+      expect.objectContaining({
         message: "Forbidden",
         status: 403,
         code: "denied",
       })
     );
+  });
+
+  it("retries once after a successful token refresh", async () => {
+    const refreshAccessToken = vi.fn().mockResolvedValue("fresh-token");
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({ title: "Unauthorized" }), {
+        status: 401,
+        headers: { "Content-Type": "application/json" },
+      }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ ok: true }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }));
+
+    configureAuthRetryHandlers({
+      getAccessToken: () => "stale-token",
+      refreshAccessToken,
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(
+      requestJson<{ ok: boolean }>("/api/protected", {
+        method: "GET",
+        accessToken: "stale-token",
+      })
+    ).resolves.toEqual({ ok: true });
+
+    expect(refreshAccessToken).toHaveBeenCalledTimes(1);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+
+    const [, retryInit] = fetchMock.mock.calls[1] as [string, RequestInit];
+    const retryHeaders = retryInit.headers as Headers;
+    expect(retryHeaders.get("Authorization")).toBe("Bearer fresh-token");
+  });
+
+  it("does not retry more than once when the retried request still returns 401", async () => {
+    const refreshAccessToken = vi.fn().mockResolvedValue("fresh-token");
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({ title: "Unauthorized" }), {
+        status: 401,
+        headers: { "Content-Type": "application/json" },
+      }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ title: "Unauthorized again" }), {
+        status: 401,
+        headers: { "Content-Type": "application/json" },
+      }));
+
+    configureAuthRetryHandlers({
+      getAccessToken: () => "stale-token",
+      refreshAccessToken,
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(
+      requestJson("/api/protected", {
+        method: "GET",
+        accessToken: "stale-token",
+      })
+    ).rejects.toEqual(
+      expect.objectContaining({
+        status: 401,
+        message: "Unauthorized again",
+      })
+    );
+
+    expect(refreshAccessToken).toHaveBeenCalledTimes(1);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("does not attempt refresh when auth retry is explicitly disabled", async () => {
+    const refreshAccessToken = vi.fn().mockResolvedValue("fresh-token");
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ title: "Unauthorized" }), {
+        status: 401,
+        headers: { "Content-Type": "application/json" },
+      })
+    );
+
+    configureAuthRetryHandlers({
+      getAccessToken: () => "stale-token",
+      refreshAccessToken,
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(
+      requestVoid("/api/logout", {
+        method: "POST",
+        accessToken: "stale-token",
+        retryOnAuthError: false,
+      })
+    ).rejects.toEqual(
+      expect.objectContaining({
+        status: 401,
+        message: "Unauthorized",
+      })
+    );
+
+    expect(refreshAccessToken).not.toHaveBeenCalled();
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 });
