@@ -1,10 +1,13 @@
 import { NextResponse } from "next/server";
 import type { RestoreAccountRequest } from "@/lib/auth/types";
-import { getApiBase, toProxyResponse } from "@/app/api/auth/_shared";
+import { enforceCsrfIfCookiePresent, getApiBase, toSafeErrorResponse } from "@/app/api/auth/_shared";
 
 const API_BASE = getApiBase();
 
 export async function POST(request: Request) {
+  const csrfFailure = enforceCsrfIfCookiePresent(request);
+  if (csrfFailure) return csrfFailure;
+
   let body: RestoreAccountRequest;
 
   try {
@@ -30,7 +33,7 @@ export async function POST(request: Request) {
   });
 
   if (!res.ok) {
-    return toProxyResponse(res);
+    return toSafeErrorResponse(res, "Account restore failed");
   }
 
   return NextResponse.json({ ok: true });

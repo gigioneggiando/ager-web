@@ -26,7 +26,7 @@ export async function setRefreshCookie(token: string, expiresAt?: string | null)
 
   jar.set(COOKIE_NAME, token, {
     httpOnly: true,
-    sameSite: "lax",
+    sameSite: "strict",
     secure,
     path: "/",
     maxAge
@@ -39,7 +39,7 @@ export async function clearRefreshCookie() {
   const secure = process.env.NODE_ENV !== "development";
   jar.set(COOKIE_NAME, "", {
     httpOnly: true,
-    sameSite: "lax",
+    sameSite: "strict",
     secure,
     path: "/",
     maxAge: 0

@@ -4,6 +4,7 @@ import type { AuthResultDto, RefreshTokenRequest } from "@/lib/auth/types";
 import {
   appendObservabilityHeaders,
   createProxyRequestContext,
+  enforceCsrfIfCookiePresent,
   getApiBase,
   logProxyEvent,
   toProxyResponse,
@@ -13,25 +14,21 @@ const API_BASE = getApiBase();
 const BACKEND_AUTH = `${API_BASE}/api/auth`;
 
 export async function POST(req: Request) {
+  const csrfFailure = enforceCsrfIfCookiePresent(req);
+  if (csrfFailure) return csrfFailure;
+
   const startedAt = Date.now();
   const requestContext = createProxyRequestContext(req);
-  const refreshCookie = await readRefreshCookie();
-  let refreshToken: string | null = refreshCookie;
-  if (!refreshToken) {
-    try {
-      const body = (await req.json()) as Partial<RefreshTokenRequest>;
-      if (typeof body?.refreshToken === "string") refreshToken = body.refreshToken;
-    } catch {
-      // ignore
-    }
-  }
 
+  // The refresh token is the HttpOnly cookie only. We NO LONGER accept a refresh token
+  // provided in the request body — it must come from the browser cookie.
+  const refreshToken = await readRefreshCookie();
   if (!refreshToken) return NextResponse.json({ title: "Unauthorized", status: 401 }, { status: 401 });
 
   const res = await fetch(`${BACKEND_AUTH}/refresh`, {
     method: "POST",
     headers: appendObservabilityHeaders({ "Content-Type": "application/json" }, requestContext),
-    body: JSON.stringify({ refreshToken: refreshToken } satisfies RefreshTokenRequest),
+    body: JSON.stringify({ refreshToken } satisfies RefreshTokenRequest),
   });
 
   logProxyEvent(
@@ -60,5 +57,8 @@ export async function POST(req: Request) {
     await setRefreshCookie(data.refreshToken, data.refreshTokenExpiresAt ?? null);
   }
 
-  return NextResponse.json(data);
+  // Do not expose the rotated refresh token to the browser.
+  const { refreshToken: _rt, refreshTokenExpiresAt: _rtExp, ...safe } = data;
+  void _rt; void _rtExp;
+  return NextResponse.json(safe);
 }

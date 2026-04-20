@@ -1,11 +1,14 @@
 import { NextResponse } from "next/server";
 import type { RequestLoginOtpCodeRequest } from "@/lib/auth/types";
-import { getApiBase, toProxyResponse } from "@/app/api/auth/_shared";
+import { enforceCsrfIfCookiePresent, getApiBase, toSafeErrorResponse } from "@/app/api/auth/_shared";
 
 const API_BASE = getApiBase();
 const BACKEND_AUTH = `${API_BASE}/api/auth`;
 
 export async function POST(req: Request) {
+  const csrfFailure = enforceCsrfIfCookiePresent(req);
+  if (csrfFailure) return csrfFailure;
+
   const body = (await req.json()) as RequestLoginOtpCodeRequest;
 
   const res = await fetch(`${BACKEND_AUTH}/login/request-code`, {
@@ -15,17 +18,8 @@ export async function POST(req: Request) {
   });
 
   if (!res.ok) {
-    return toProxyResponse(res);
+    return toSafeErrorResponse(res, "Unable to send the code");
   }
 
-  const data = await safeJson(res);
-  return NextResponse.json(data ?? { ok: true });
-}
-
-async function safeJson(r: Response) {
-  try {
-    return await r.json();
-  } catch {
-    return null;
-  }
+  return NextResponse.json({ ok: true });
 }

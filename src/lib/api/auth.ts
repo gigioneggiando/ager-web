@@ -18,70 +18,55 @@ import type {
 
 export type { LoginRequest, RegisterRequest, AuthResultDto };
 
-const REFRESH_TOKEN_STORAGE_KEY = "ager.refreshToken";
-const REFRESH_TOKEN_EXPIRES_STORAGE_KEY = "ager.refreshTokenExpiresAt";
+// SECURITY: refresh tokens are held exclusively in the HttpOnly `ager_refresh` cookie owned
+// by the Next.js edge. We never read/write them in JavaScript to avoid XSS exfiltration.
+// These storage keys from earlier versions are cleaned up once per session.
+const LEGACY_REFRESH_TOKEN_STORAGE_KEY = "ager.refreshToken";
+const LEGACY_REFRESH_TOKEN_EXPIRES_STORAGE_KEY = "ager.refreshTokenExpiresAt";
 
-let inMemoryRefreshToken: string | null = null;
-let inMemoryRefreshTokenExpiresAt: string | null = null;
 let csrfToken: string | null = null;
 let csrfBootstrapPromise: Promise<string | null> | null = null;
 let refreshSingleFlightPromise: Promise<AuthResultDto> | null = null;
+let legacyCleanedUp = false;
 
 function isBrowser() {
   return typeof window !== "undefined";
 }
 
-  function isRefreshTokenUsable(expiresAt: string | null): boolean {
-    if (!expiresAt) return true; // unknown expiry — optimistically try
-    const exp = new Date(expiresAt).getTime();
-    return !Number.isNaN(exp) && exp > Date.now() + 5_000;
+function purgeLegacyRefreshStorage() {
+  if (legacyCleanedUp || !isBrowser()) return;
+  try {
+    window.localStorage.removeItem(LEGACY_REFRESH_TOKEN_STORAGE_KEY);
+    window.localStorage.removeItem(LEGACY_REFRESH_TOKEN_EXPIRES_STORAGE_KEY);
+  } catch {
+    // storage may be disabled; safe to ignore.
   }
-
-function readStoredRefreshToken(): { token: string | null; expiresAt: string | null } {
-  if (!isBrowser()) {
-    return { token: inMemoryRefreshToken, expiresAt: inMemoryRefreshTokenExpiresAt };
-  }
-
-  const token = window.localStorage.getItem(REFRESH_TOKEN_STORAGE_KEY);
-  const expiresAt = window.localStorage.getItem(REFRESH_TOKEN_EXPIRES_STORAGE_KEY);
-  inMemoryRefreshToken = token;
-  inMemoryRefreshTokenExpiresAt = expiresAt;
-  return { token, expiresAt };
+  legacyCleanedUp = true;
 }
 
-export function storeRefreshToken(refreshToken: string | null, refreshTokenExpiresAt?: string | null) {
-  inMemoryRefreshToken = refreshToken;
-  inMemoryRefreshTokenExpiresAt = refreshTokenExpiresAt ?? null;
-
-  if (!isBrowser()) return;
-
-  if (refreshToken) {
-    window.localStorage.setItem(REFRESH_TOKEN_STORAGE_KEY, refreshToken);
-    if (refreshTokenExpiresAt) {
-      window.localStorage.setItem(REFRESH_TOKEN_EXPIRES_STORAGE_KEY, refreshTokenExpiresAt);
-    } else {
-      window.localStorage.removeItem(REFRESH_TOKEN_EXPIRES_STORAGE_KEY);
-    }
-    return;
-  }
-
-  window.localStorage.removeItem(REFRESH_TOKEN_STORAGE_KEY);
-  window.localStorage.removeItem(REFRESH_TOKEN_EXPIRES_STORAGE_KEY);
-}
-
-export function clearStoredRefreshToken() {
-  storeRefreshToken(null, null);
-}
-
+/** @deprecated Always returns null. Kept only for backwards compatibility. */
 export function getStoredRefreshToken(): string | null {
-  return readStoredRefreshToken().token;
+  purgeLegacyRefreshStorage();
+  return null;
+}
+
+/** @deprecated The refresh cookie is server-managed; client calls are a no-op. */
+export function storeRefreshToken(_refreshToken: string | null, _refreshTokenExpiresAt?: string | null) {
+  purgeLegacyRefreshStorage();
+}
+
+/** @deprecated The refresh cookie is server-managed; client calls are a no-op. */
+export function clearStoredRefreshToken() {
+  purgeLegacyRefreshStorage();
 }
 
 function normalizeAuthResult(data: AuthResultDto): AuthResultDto {
-  if (data.refreshToken) {
-    storeRefreshToken(data.refreshToken, data.refreshTokenExpiresAt ?? null);
-  }
-  return data;
+  // Proxy now strips refreshToken from the response. This remains as a belt-and-braces
+  // guard: if a legacy backend somehow returns it, we discard it in-flight.
+  purgeLegacyRefreshStorage();
+  const { refreshToken: _rt, refreshTokenExpiresAt: _rtExp, ...safe } = data;
+  void _rt; void _rtExp;
+  return safe as AuthResultDto;
 }
 
 export async function bootstrapCsrf(force = false): Promise<string | null> {
@@ -201,47 +186,31 @@ export async function oauthApple(idToken: string): Promise<AuthResultDto> {
   );
 }
 
-// Refresh token is client-managed and rotated on every successful refresh.
-export async function refresh(refreshToken?: string): Promise<AuthResultDto> {
+// Refresh goes through the Next.js proxy which reads the HttpOnly cookie. The client never
+// touches the refresh token directly. The `refreshToken` parameter is retained only as a
+// no-op for legacy call sites during rollout.
+export async function refresh(_ignored?: string): Promise<AuthResultDto> {
   if (refreshSingleFlightPromise) {
     return refreshSingleFlightPromise;
   }
 
-  const stored = readStoredRefreshToken();
-  const storedToken = stored.token && isRefreshTokenUsable(stored.expiresAt) ? stored.token : null;
-  const tokenToUse = refreshToken ?? storedToken;
+  purgeLegacyRefreshStorage();
 
   refreshSingleFlightPromise = (async () => {
-    let data: AuthResultDto;
     try {
-      data = tokenToUse
-        ? await requestJson<AuthResultDto>("/api/auth/refresh", {
-            method: "POST",
-            credentials: "same-origin",
-            cache: "no-store",
-            body: { refreshToken: tokenToUse },
-          })
-        : await requestJson<AuthResultDto>("/api/auth/refresh", {
-            method: "POST",
-            credentials: "same-origin",
-            cache: "no-store",
-          });
+      const data = await requestJson<AuthResultDto>("/api/auth/refresh", {
+        method: "POST",
+        credentials: "same-origin",
+        cache: "no-store",
+      });
+      return normalizeAuthResult(data);
     } catch (error) {
       const apiError = error as ApiError;
       if (apiError?.status === 401) {
-        clearStoredRefreshToken();
+        // Nothing to wipe locally — the cookie is cleared server-side on 401.
       }
       throw error;
     }
-
-    // Support both modes:
-    // 1) token in body with rotation
-    // 2) HttpOnly cookie-only refresh (no token in JSON response)
-    if (data.refreshToken) {
-      return normalizeAuthResult(data);
-    }
-
-    return data;
   })();
 
   try {
@@ -251,11 +220,9 @@ export async function refresh(refreshToken?: string): Promise<AuthResultDto> {
   }
 }
 
-// Logout forwards Authorization + refreshToken cookie to backend.
-export async function logout(accessToken: string | null, refreshToken?: string): Promise<void> {
-  const stored = readStoredRefreshToken().token;
-  const tokenToUse = refreshToken ?? stored;
-
+// Logout: access token goes as a Bearer header; refresh token is sent via the HttpOnly cookie
+// already attached by the browser. No client-held refresh token is forwarded.
+export async function logout(accessToken: string | null): Promise<void> {
   const headers: Record<string, string> = {};
   if (accessToken) headers.Authorization = `Bearer ${accessToken}`;
 
@@ -265,11 +232,10 @@ export async function logout(accessToken: string | null, refreshToken?: string):
   try {
     await requestVoid("/api/auth/logout", {
       method: "POST",
-      body: tokenToUse ? { refreshToken: tokenToUse } : undefined,
       headers,
     });
   } finally {
-    clearStoredRefreshToken();
+    purgeLegacyRefreshStorage();
   }
 }
 

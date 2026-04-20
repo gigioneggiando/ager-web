@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { refresh, storeRefreshToken } from "@/lib/api/auth";
+import { refresh, getStoredRefreshToken } from "@/lib/api/auth";
 
 const { requestJsonMock } = vi.hoisted(() => ({
   requestJsonMock: vi.fn(),
@@ -20,52 +20,55 @@ describe("auth api", () => {
     requestJsonMock.mockReset();
     requestVoidMock.mockReset();
     window.localStorage.clear();
-    storeRefreshToken(null, null);
   });
 
-  it("uses the latest refresh token from localStorage across tabs", async () => {
+  // Refresh tokens must never be stored client-side. The HttpOnly cookie is the only carrier;
+  // reading the getter must always return null, even if a stale value from an older build
+  // lives in localStorage.
+  it("never returns a refresh token from client storage, even if legacy value exists", () => {
+    window.localStorage.setItem("ager.refreshToken", "legacy-leaked-token");
+    window.localStorage.setItem("ager.refreshTokenExpiresAt", "2026-03-26T12:00:00.000Z");
+
+    expect(getStoredRefreshToken()).toBeNull();
+    // Legacy keys are cleaned up on first access.
+    expect(window.localStorage.getItem("ager.refreshToken")).toBeNull();
+    expect(window.localStorage.getItem("ager.refreshTokenExpiresAt")).toBeNull();
+  });
+
+  it("calls the proxy without a body — refresh cookie is attached by the browser", async () => {
     requestJsonMock.mockResolvedValue({
       userId: "user-1",
       accessToken: "access-2",
       accessTokenExpiresAt: "2026-03-12T12:30:00.000Z",
-      refreshToken: "refresh-2",
+    });
+
+    await refresh();
+
+    expect(requestJsonMock).toHaveBeenCalledWith(
+      "/api/auth/refresh",
+      expect.objectContaining({
+        method: "POST",
+        credentials: "same-origin",
+        cache: "no-store",
+      })
+    );
+    const [, opts] = requestJsonMock.mock.calls[0] as [string, { body?: unknown }];
+    expect(opts.body).toBeUndefined();
+  });
+
+  it("strips any refresh token the backend might return", async () => {
+    requestJsonMock.mockResolvedValue({
+      userId: "user-1",
+      accessToken: "access-2",
+      accessTokenExpiresAt: "2026-03-12T12:30:00.000Z",
+      refreshToken: "should-be-discarded",
       refreshTokenExpiresAt: "2026-03-26T12:00:00.000Z",
     });
 
-    storeRefreshToken("refresh-1", "2026-03-26T11:00:00.000Z");
-    window.localStorage.setItem("ager.refreshToken", "refresh-from-other-tab");
-    window.localStorage.setItem("ager.refreshTokenExpiresAt", "2026-03-26T12:00:00.000Z");
+    const result = await refresh();
 
-    await refresh();
-
-    expect(requestJsonMock).toHaveBeenCalledWith(
-      "/api/auth/refresh",
-      expect.objectContaining({
-        method: "POST",
-        credentials: "same-origin",
-        cache: "no-store",
-        body: { refreshToken: "refresh-from-other-tab" },
-      })
-    );
-  });
-
-  it("still attempts cookie-based refresh when no client token is stored", async () => {
-    requestJsonMock.mockResolvedValue({
-      userId: "user-1",
-      accessToken: "access-2",
-      accessTokenExpiresAt: "2026-03-12T12:30:00.000Z",
-    });
-
-    await refresh();
-
-    expect(requestJsonMock).toHaveBeenCalledWith(
-      "/api/auth/refresh",
-      expect.objectContaining({
-        method: "POST",
-        credentials: "same-origin",
-        cache: "no-store",
-      })
-    );
+    expect((result as { refreshToken?: string }).refreshToken).toBeUndefined();
+    expect(window.localStorage.getItem("ager.refreshToken")).toBeNull();
   });
 
   it("sends honeypot and captcha token with register OTP requests", async () => {

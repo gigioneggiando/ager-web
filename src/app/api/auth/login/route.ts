@@ -4,15 +4,19 @@ import type { AuthResultDto, LoginRequest } from "@/lib/auth/types";
 import {
   appendObservabilityHeaders,
   createProxyRequestContext,
+  enforceCsrfIfCookiePresent,
   getApiBase,
   logProxyEvent,
-  toProxyResponse,
+  toSafeErrorResponse,
 } from "@/app/api/auth/_shared";
 
 const API_BASE = getApiBase();
 const BACKEND_AUTH = `${API_BASE}/api/auth`;
 
 export async function POST(req: Request) {
+  const csrfFailure = enforceCsrfIfCookiePresent(req);
+  if (csrfFailure) return csrfFailure;
+
   const startedAt = Date.now();
   const requestContext = createProxyRequestContext(req);
   const body = (await req.json()) as LoginRequest;
@@ -37,7 +41,7 @@ export async function POST(req: Request) {
   );
 
   if (!res.ok) {
-    return toProxyResponse(res);
+    return toSafeErrorResponse(res, "Login failed");
   }
 
   const data = (await res.json()) as AuthResultDto;
@@ -46,5 +50,9 @@ export async function POST(req: Request) {
     await setRefreshCookie(data.refreshToken, data.refreshTokenExpiresAt ?? null);
   }
 
-  return NextResponse.json(data);
+  // Never return the refresh token to the browser. It's held in an HttpOnly cookie on the
+  // Next.js edge; the client never needs to see or persist it.
+  const { refreshToken: _rt, refreshTokenExpiresAt: _rtExp, ...safe } = data;
+  void _rt; void _rtExp;
+  return NextResponse.json(safe);
 }

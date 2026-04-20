@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { enforceCsrfIfCookiePresent } from "@/app/api/auth/_shared";
 
 function getApiBase() {
   return (
@@ -9,6 +10,9 @@ function getApiBase() {
 }
 
 async function proxyReadingLists(req: Request, extraPath: string) {
+  const csrfFailure = enforceCsrfIfCookiePresent(req);
+  if (csrfFailure) return csrfFailure;
+
   const apiBase = getApiBase();
   const url = new URL(req.url);
   const backendUrl = `${apiBase}/api/reading-lists${extraPath}${url.search}`;
@@ -16,6 +20,12 @@ async function proxyReadingLists(req: Request, extraPath: string) {
   const headers: Record<string, string> = {};
   const auth = req.headers.get("authorization");
   if (auth) headers["authorization"] = auth;
+
+  const csrf = req.headers.get("x-csrf-token");
+  if (csrf) headers["x-csrf-token"] = csrf;
+
+  const cookie = req.headers.get("cookie");
+  if (cookie) headers["cookie"] = cookie;
 
   const contentType = req.headers.get("content-type");
   if (contentType) headers["content-type"] = contentType;

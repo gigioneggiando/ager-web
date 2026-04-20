@@ -1,6 +1,7 @@
 import {
   appendObservabilityHeaders,
   createProxyRequestContext,
+  enforceCsrfIfCookiePresent,
   logProxyEvent,
   toProxyResponse,
 } from "@/app/api/auth/_shared";
@@ -14,6 +15,9 @@ function getApiBase() {
 }
 
 async function proxyMe(req: Request, extraPath: string) {
+  const csrfFailure = enforceCsrfIfCookiePresent(req);
+  if (csrfFailure) return csrfFailure;
+
   const startedAt = Date.now();
   const requestContext = createProxyRequestContext(req);
   const apiBase = getApiBase();

@@ -4,6 +4,7 @@ import type { LogoutRequest } from "@/lib/auth/types";
 import {
   appendObservabilityHeaders,
   createProxyRequestContext,
+  enforceCsrfIfCookiePresent,
   getApiBase,
   logProxyEvent,
   pickRequestHeaders,
@@ -14,19 +15,13 @@ const API_BASE = getApiBase();
 const BACKEND_AUTH = `${API_BASE}/api/auth`;
 
 export async function POST(req: Request) {
+  const csrfFailure = enforceCsrfIfCookiePresent(req);
+  if (csrfFailure) return csrfFailure;
+
   const startedAt = Date.now();
   const requestContext = createProxyRequestContext(req);
-  const refreshCookie = await readRefreshCookie();
-
-  let refreshToken: string | null = refreshCookie;
-  if (!refreshToken) {
-    try {
-      const body = (await req.json()) as Partial<LogoutRequest>;
-      if (typeof body?.refreshToken === "string") refreshToken = body.refreshToken;
-    } catch {
-      // ignore
-    }
-  }
+  // Only use the HttpOnly cookie; body-supplied tokens are no longer accepted.
+  const refreshToken = await readRefreshCookie();
 
   if (refreshToken) {
     try {
@@ -36,7 +31,7 @@ export async function POST(req: Request) {
           "Content-Type": "application/json",
           ...pickRequestHeaders(req, ["authorization", "x-csrf-token", "cookie"]),
         }, requestContext),
-        body: JSON.stringify({ refreshToken: refreshToken } satisfies LogoutRequest),
+        body: JSON.stringify({ refreshToken } satisfies LogoutRequest),
       });
 
       logProxyEvent(

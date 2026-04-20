@@ -1,5 +1,99 @@
 import { NextResponse } from "next/server";
 
+const CSRF_COOKIE = "XSRF-TOKEN";
+const CSRF_HEADER = "x-csrf-token";
+const STATE_CHANGING_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
+
+// Edge-level CSRF double-submit check. For every state-changing proxy route, require the
+// X-CSRF-TOKEN header to match the XSRF-TOKEN cookie (constant-time). If the cookie is
+// missing the request is allowed — preserving the opt-in model used by the backend
+// (Security:Csrf:EnforceOnCookieRequests) — but when the cookie is present it MUST match
+// the header. Returns a NextResponse on failure; returns null if the request may proceed.
+export function enforceCsrfIfCookiePresent(req: Request): NextResponse | null {
+  if (!STATE_CHANGING_METHODS.has(req.method.toUpperCase())) return null;
+
+  const cookies = parseCookies(req.headers.get("cookie"));
+  const cookieToken = cookies.get(CSRF_COOKIE);
+  if (!cookieToken) return null;
+
+  const headerToken = req.headers.get(CSRF_HEADER);
+  if (!headerToken || !constantTimeEqual(cookieToken, headerToken)) {
+    return NextResponse.json(
+      {
+        title: "CSRF validation failed",
+        detail: "The request is missing or has an invalid CSRF token.",
+        status: 403,
+        errorCode: "csrf_validation_failed",
+      },
+      { status: 403 }
+    );
+  }
+  return null;
+}
+
+function parseCookies(header: string | null): Map<string, string> {
+  const out = new Map<string, string>();
+  if (!header) return out;
+  for (const part of header.split(";")) {
+    const [rawName, ...rest] = part.split("=");
+    if (!rawName) continue;
+    const name = rawName.trim();
+    if (!name) continue;
+    const value = rest.join("=").trim();
+    out.set(name, decodeURIComponent(value));
+  }
+  return out;
+}
+
+function constantTimeEqual(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return diff === 0;
+}
+
+// Normalise upstream error bodies so internal details (stack traces, DB messages, full
+// ProblemDetails extensions the caller doesn't need) are not echoed to the browser.
+export async function toSafeErrorResponse(upstream: Response, fallbackMessage = "Request failed"): Promise<NextResponse> {
+  const safe: Record<string, unknown> = {
+    message: GENERIC_MESSAGES[upstream.status] ?? fallbackMessage,
+    status: upstream.status,
+  };
+
+  try {
+    const text = await upstream.text();
+    if (text) {
+      try {
+        const parsed = JSON.parse(text) as Record<string, unknown>;
+        if (typeof parsed.errorCode === "string") safe.errorCode = parsed.errorCode;
+      } catch {
+        /* not JSON — discard */
+      }
+    }
+  } catch {
+    /* body read failure — irrelevant, we already have status */
+  }
+
+  const headers = new Headers({ "content-type": "application/json" });
+  const retryAfter = upstream.headers.get("retry-after");
+  if (retryAfter) headers.set("retry-after", retryAfter);
+  return new NextResponse(JSON.stringify(safe), { status: upstream.status, headers });
+}
+
+const GENERIC_MESSAGES: Record<number, string> = {
+  400: "Invalid request.",
+  401: "Unauthorized.",
+  403: "Forbidden.",
+  404: "Not found.",
+  409: "Conflict.",
+  422: "Validation failed.",
+  429: "Too many requests.",
+  500: "Internal server error.",
+  501: "Not implemented.",
+  502: "Upstream error.",
+  503: "Service unavailable.",
+};
+
 type ProxyRequestContext = {
   requestId: string;
   correlationId: string;
