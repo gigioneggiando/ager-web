@@ -82,6 +82,7 @@ export default async function ArticleDetailPage({
 }) {
   const { locale, id } = await params;
   const t = await getTranslations({ locale, namespace: "articleDetail" });
+  const tFeedCard = await getTranslations({ locale, namespace: "feed.card" });
   const articleId = Number(id);
   if (!Number.isFinite(articleId)) notFound();
 
@@ -127,6 +128,12 @@ export default async function ArticleDetailPage({
               {t("languageLabel")}: {languageLabel}
             </span>
           </>
+        )}
+
+        {article.paywallDetected && (
+          <span className="rounded-full border border-border px-2 py-0.5 text-[10px] uppercase tracking-wide">
+            {tFeedCard("paywallBadge")}
+          </span>
         )}
       </div>
 

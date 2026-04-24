@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Bookmark, Share2, Heart, EyeOff } from "lucide-react";
 import { useState } from "react";
 import AddToListDialog from "@/features/lists/components/AddToListDialog";
@@ -22,6 +23,7 @@ type Props = {
   sourceUrl?: string | null;
   sourceName: string;
   publishedAt: string;
+  paywallDetected?: boolean;
 };
 
 function timeAgo(iso: string, locale: string) {
@@ -69,8 +71,10 @@ export default function SearchResultRow({
   sourceUrl,
   sourceName,
   publishedAt,
+  paywallDetected,
 }: Props) {
   const t = useTranslations("search.resultRow");
+  const tFeedCard = useTranslations("feed.card");
   const { locale } = useAppLocale();
   const sp = useSearchParams();
   const qc = useQueryClient();
@@ -137,6 +141,11 @@ export default function SearchResultRow({
             <span className="font-medium">{sourceName}</span>
             <span>•</span>
             <span>{rel}</span>
+            {paywallDetected ? (
+              <Badge variant="outline" className="rounded-full text-[10px]">
+                {tFeedCard("paywallBadge")}
+              </Badge>
+            ) : null}
           </div>
           <Link href={detailHref} className="mt-1 block font-medium hover:underline">
             {title}

@@ -109,6 +109,7 @@ export default function FeedList() {
           publishedAt={it.publishedAt}
           topics={it.topics}
           estimatedReadingMinutes={it.estimatedReadingMinutes}
+          paywallDetected={it.paywallDetected}
         />
       ))}
       <div ref={bottomRef} />

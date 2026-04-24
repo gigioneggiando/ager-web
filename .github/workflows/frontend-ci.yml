@@ -1,0 +1,50 @@
+name: Frontend CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: [main]
+
+# Cancel in-flight runs on the same ref. CI minutes are finite and Next.js builds
+# are slow enough that back-to-back full runs hurt iteration speed.
+concurrency:
+  group: frontend-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  frontend:
+    name: frontend
+    runs-on: ubuntu-latest
+
+    # Both vars are read by Next.js build-time and by the API route proxies.
+    # Mirror local dev defaults; no real backend is reached from CI.
+    env:
+      NEXT_PUBLIC_API_BASE_URL: http://localhost:8080
+      API_BASE_URL: http://localhost:8080
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # Node 22 chosen to match the version the maintainer already uses in the
+      # previous ci.yml (now superseded by this file) and because `next@16`
+      # declares Node >= 20 — 22 is the current LTS as of 2026.
+      - name: Setup Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install (strict)
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Build
+        run: npm run build
+
+      - name: Test (Vitest)
+        run: npm test

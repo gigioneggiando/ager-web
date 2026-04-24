@@ -1,9 +1,17 @@
+/**
+ * User role as returned by the backend. String-union mirror of Ager.Domain.Users.UserRole.
+ * The backend normalises to lowercase.
+ */
+export type UserRole = "user" | "admin";
+
 export type AuthResultDto = {
   userId: string;
   accessToken: string;
   accessTokenExpiresAt: string;     // ISO
   refreshToken?: string | null;
   refreshTokenExpiresAt?: string | null;
+  /** Lowercase role string. UX hint only — authorisation is enforced server-side. */
+  role?: UserRole;
 };
 
 export type LoginRequest = {

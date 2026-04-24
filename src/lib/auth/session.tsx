@@ -12,13 +12,20 @@ import {
   oauthGoogle as apiOauthGoogle,
   oauthApple as apiOauthApple,
 } from "@/lib/api/auth";
+import type { UserRole } from "@/lib/auth/types";
 
 type SessionState = {
   ready: boolean;
   userId: string | null;
   accessToken: string | null;
   accessTokenExpiresAt: string | null;
+  /** Lowercase role returned by the backend. Null until the first auth response arrives. */
+  role: UserRole | null;
 };
+
+function normaliseRole(role: string | undefined | null): UserRole | null {
+  return role === "admin" || role === "user" ? role : null;
+}
 
 type AuthActions = {
   requestLoginOtp: (email: string) => Promise<void>;
@@ -45,7 +52,7 @@ function isBrowser() {
 
 function readStoredSession(): SessionState {
   // Keep access tokens in memory only. On reload, re-hydrate via refresh-cookie flow.
-  return { ready: false, userId: null, accessToken: null, accessTokenExpiresAt: null };
+  return { ready: false, userId: null, accessToken: null, accessTokenExpiresAt: null, role: null };
 }
 
 export function SessionProvider({ children }: { children: React.ReactNode }) {
@@ -57,7 +64,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const clearSession = useCallback(() => {
-    updateSession({ ready: true, userId: null, accessToken: null, accessTokenExpiresAt: null });
+    updateSession({ ready: true, userId: null, accessToken: null, accessTokenExpiresAt: null, role: null });
   }, [updateSession]);
 
   const runRefresh = useCallback(async (options?: { clearOnUnauthorized?: boolean }): Promise<string | null> => {
@@ -72,7 +79,8 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
           ready: true,
           userId: data.userId,
           accessToken: data.accessToken,
-          accessTokenExpiresAt: data.accessTokenExpiresAt
+          accessTokenExpiresAt: data.accessTokenExpiresAt,
+          role: normaliseRole(data.role)
         });
         return data.accessToken ?? null;
       } catch (error) {
@@ -147,7 +155,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     }
 
     const data = await apiLogin(payload);
-    updateSession({ ready: true, userId: data.userId, accessToken: data.accessToken, accessTokenExpiresAt: data.accessTokenExpiresAt });
+    updateSession({ ready: true, userId: data.userId, accessToken: data.accessToken, accessTokenExpiresAt: data.accessTokenExpiresAt, role: normaliseRole(data.role) });
   }, [updateSession]);
 
   const requestRegisterOtp = useCallback(async (payload: {
@@ -164,17 +172,17 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
 
   const register = useCallback(async (payload: { username: string; email: string; otpCode: string; password?: string | null }) => {
     const data = await apiRegisterWithOtp(payload.username, payload.email, payload.otpCode, payload.password);
-    updateSession({ ready: true, userId: data.userId, accessToken: data.accessToken, accessTokenExpiresAt: data.accessTokenExpiresAt });
+    updateSession({ ready: true, userId: data.userId, accessToken: data.accessToken, accessTokenExpiresAt: data.accessTokenExpiresAt, role: normaliseRole(data.role) });
   }, [updateSession]);
 
   const oauthGoogle = useCallback(async (idToken: string) => {
     const data = await apiOauthGoogle(idToken);
-    updateSession({ ready: true, userId: data.userId, accessToken: data.accessToken, accessTokenExpiresAt: data.accessTokenExpiresAt });
+    updateSession({ ready: true, userId: data.userId, accessToken: data.accessToken, accessTokenExpiresAt: data.accessTokenExpiresAt, role: normaliseRole(data.role) });
   }, [updateSession]);
 
   const oauthApple = useCallback(async (idToken: string) => {
     const data = await apiOauthApple(idToken);
-    updateSession({ ready: true, userId: data.userId, accessToken: data.accessToken, accessTokenExpiresAt: data.accessTokenExpiresAt });
+    updateSession({ ready: true, userId: data.userId, accessToken: data.accessToken, accessTokenExpiresAt: data.accessTokenExpiresAt, role: normaliseRole(data.role) });
   }, [updateSession]);
 
   const logout = useCallback(async () => {

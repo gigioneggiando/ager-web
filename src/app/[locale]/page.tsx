@@ -387,11 +387,20 @@ export default async function Home({ params }: PageProps) {
                     ? "© 2025 Ager — Tutti i diritti riservati"
                     : "© 2025 Ager — All rights reserved"}
                 </div>
-                <div className="text-muted-foreground">
+                <nav className="flex flex-wrap gap-x-4 gap-y-1 text-muted-foreground sm:justify-end">
+                  <Link className="hover:text-foreground" href={`/${locale}/bot`}>
+                    Bot policy
+                  </Link>
+                  <Link className="hover:text-foreground" href={`/${locale}/takedown`}>
+                    {isIt ? "Rimozione contenuti" : "Takedown"}
+                  </Link>
+                  <Link className="hover:text-foreground" href={`/${locale}/dsa-contact`}>
+                    {isIt ? "Contatto DSA" : "DSA contact"}
+                  </Link>
                   <a className="hover:text-foreground" href="mailto:ager.org@gmail.com">
                     {isIt ? "Contatti" : "Contact"}
                   </a>
-                </div>
+                </nav>
               </div>
             </div>
           </div>

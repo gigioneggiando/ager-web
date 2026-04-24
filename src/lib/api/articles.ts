@@ -1,5 +1,6 @@
 import { API_BASE } from "@/lib/api/client";
 import { requestJson } from "@/lib/api/request";
+import type { DisplayMode, LicenseType } from "@/lib/api/types";
 
 export type ArticleDto = {
   articleId: number;
@@ -12,6 +13,9 @@ export type ArticleDto = {
   publishedAt?: string | null;
   author?: string | null;
   lang?: string | null;
+  licenseType: LicenseType;
+  displayMode: DisplayMode;
+  paywallDetected: boolean;
 };
 
 export async function getArticlePublic(articleId: number): Promise<ArticleDto> {

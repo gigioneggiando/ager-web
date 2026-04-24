@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { setRefreshCookie } from "@/lib/auth/cookie";
+import { setRefreshCookie, setRoleCookie } from "@/lib/auth/cookie";
 import type { AuthResultDto } from "@/lib/auth/types";
 import { enforceCsrfIfCookiePresent, getApiBase, toSafeErrorResponse } from "@/app/api/auth/_shared";
 
@@ -36,6 +36,9 @@ export async function POST(req: Request) {
 
   if (data.refreshToken) {
     await setRefreshCookie(data.refreshToken, data.refreshTokenExpiresAt ?? null);
+  }
+  if (data.role) {
+    await setRoleCookie(data.role, data.refreshTokenExpiresAt ?? null);
   }
 
   // Refresh token stays in the HttpOnly cookie.

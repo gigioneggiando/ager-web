@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { setRefreshCookie } from "@/lib/auth/cookie";
+import { setRefreshCookie, setRoleCookie } from "@/lib/auth/cookie";
 import type { AuthResultDto, LoginRequest } from "@/lib/auth/types";
 import {
   appendObservabilityHeaders,
@@ -48,6 +48,9 @@ export async function POST(req: Request) {
 
   if (data.refreshToken) {
     await setRefreshCookie(data.refreshToken, data.refreshTokenExpiresAt ?? null);
+  }
+  if (data.role) {
+    await setRoleCookie(data.role, data.refreshTokenExpiresAt ?? null);
   }
 
   // Never return the refresh token to the browser. It's held in an HttpOnly cookie on the

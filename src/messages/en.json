@@ -144,7 +144,13 @@
       "latest": "Latest",
       "top": "Top",
       "explore": "Explore",
-      "lists": "Reading lists"
+      "lists": "Reading lists",
+      "admin": {
+        "heading": "Administration",
+        "sources": "Sources",
+        "takedown": "Takedowns",
+        "ingestionLog": "Ingestion log"
+      }
     }
   },
   "lists": {
@@ -454,7 +460,174 @@
     "card": {
       "topicSearchAriaLabel": "Search: {topic}",
       "linkCopied": "Link copied",
-      "shareFailed": "Unable to share"
+      "shareFailed": "Unable to share",
+      "paywallBadge": "Content on publisher site (paywall)"
+    }
+  },
+  "takedown": {
+    "meta": {
+      "title": "Takedown request",
+      "description": "Form to request removal of content from Ager under the Digital Services Act (art. 16-17)."
+    },
+    "heading": "Takedown request",
+    "intro": "If you are a publisher, an author, or otherwise have standing, you can request the removal of a specific article or an entire source from Ager. Every request is recorded for Digital Services Act evidence (art. 16-17) and reviewed manually by our team. You will receive a reply at the email address you provide.",
+    "form": {
+      "targetHelp": "Provide the article ID or the source ID. At least one is required.",
+      "articleIdLabel": "Article ID (optional if you provide a source ID)",
+      "sourceIdLabel": "Source ID (optional if you provide an article ID)",
+      "emailLabel": "Your email",
+      "emailHelp": "We will only use this address to reply to your request.",
+      "roleLabel": "Who are you?",
+      "roleOptions": {
+        "publisher": "Publisher / outlet",
+        "author": "Article author",
+        "third_party": "Affected third party (e.g. person mentioned)",
+        "anonymous": "Prefer not to say"
+      },
+      "reasonLabel": "Reason for the request",
+      "reasonHelp": "Explain clearly why you are asking for removal. Cite the legal basis where possible (copyright, defamation, personal data, etc.).",
+      "submit": "Send request",
+      "submitting": "Sending…",
+      "success": "Request received. You will get a confirmation email. Reference number: {id}.",
+      "errorMissingTarget": "You must provide at least one article ID or source ID.",
+      "errorGeneric": "Submission failed. Please try again later or email takedown@agerculture.com."
+    },
+    "admin": {
+      "heading": "Takedown requests",
+      "filterAll": "All",
+      "filterPending": "Pending only",
+      "filterRecent": "Last 30 days",
+      "columns": {
+        "received": "Received",
+        "target": "Target",
+        "requester": "Requester",
+        "status": "Status",
+        "action": "Decision"
+      },
+      "pending": "Pending",
+      "resolved": "Resolved",
+      "actions": {
+        "markRemoved": "Mark as removed",
+        "markDisputed": "Dispute",
+        "markReferred": "Refer",
+        "markNone": "No action",
+        "removedWarning": "This will remove the article from public responses."
+      },
+      "notesLabel": "Decision notes",
+      "save": "Save decision",
+      "saved": "Decision recorded",
+      "saveFailed": "Save failed"
+    }
+  },
+  "botPolicy": {
+    "meta": {
+      "title": "AgerBot — how our crawler works",
+      "description": "How AgerBot operates, which policy files it respects, and how to request opt-out or licensing agreements."
+    },
+    "heading": "AgerBot — how it works",
+    "whoWeAre": {
+      "title": "Who we are",
+      "body": "Ager is a Danish non-profit association (forening) building a link-first reader. Our mission is described on the Philosophy page."
+    },
+    "whatItDoes": {
+      "title": "What AgerBot does",
+      "body": "AgerBot periodically fetches RSS feeds that publishers make available voluntarily. It reads only the feed itself (title, excerpt, link, publication date). It does not download, render, or retain the full body of articles. We do not keep a persistent cache of publisher pages."
+    },
+    "userAgent": {
+      "title": "User-Agent",
+      "body": "Every HTTP request our crawler makes identifies itself with the following string:"
+    },
+    "frequency": {
+      "title": "Fetch frequency",
+      "body": "For each enabled source, our poller fetches approximately once every 2 minutes (the default configuration). In practice the effective frequency is lower, because a feed that has not changed triggers no writes on our side. If you want us to slow down further, use robots.txt (see below) or write to us."
+    },
+    "respects": {
+      "title": "Policy files we honour",
+      "intro": "Before every fetch cycle we download and check these three files at the publisher's origin:",
+      "robotsLabel": "robots.txt (RFC 9309)",
+      "robotsDesc": "we honour Disallow directives under User-agent: AgerBot and, in the absence of that, under User-agent: *.",
+      "tdmrepLabel": "/.well-known/tdmrep.json (W3C TDM Reservation Protocol)",
+      "tdmrepDesc": "if a reservation for text and data mining is declared, we stop ingesting articles from the source until the policy changes.",
+      "aiTxtLabel": "/.well-known/ai.txt (IETF draft)",
+      "aiTxtDesc": "we monitor this file; we record its hash in a forensic log together with the other two."
+    },
+    "ipRange": {
+      "title": "IP addresses",
+      "body": "Today we publish traffic from a single static IP address; we will announce a stable list once our production infrastructure is finalised. [TODO: publish the actual address here at launch.]"
+    },
+    "optOut": {
+      "title": "How to ask us to stop",
+      "intro": "You have three equivalent options. We act on every request within 48 business hours.",
+      "robotsLabel": "robots.txt",
+      "robotsBody": "Add a User-agent: AgerBot block with Disallow: / (or the specific path). We will see it on our next fetch.",
+      "tdmrepLabel": "tdmrep.json",
+      "tdmrepBody": "Publish /.well-known/tdmrep.json with \"tdm:reservation\": 1 per the W3C specification.",
+      "emailLabel": "Email",
+      "emailBody": "Write to takedown@agerculture.com stating the domain to block."
+    },
+    "takedown": {
+      "title": "Removal of a specific article",
+      "body": "If your request concerns a single URL already indexed, use the dedicated form: every request is recorded as evidence under Digital Services Act art. 16-17.",
+      "linkText": "Go to the takedown form"
+    },
+    "partnership": {
+      "title": "Partnerships and licensing",
+      "body": "To discuss licensing agreements, traffic exchange or API integrations, write to partnerships@agerculture.com."
+    },
+    "footer": {
+      "updated": "Last updated: 24 April 2026"
+    }
+  },
+  "dsaContact": {
+    "meta": {
+      "title": "DSA Point of Contact — Ager",
+      "description": "Official Ager contacts for competent authorities and users under art. 11-12 of Regulation (EU) 2022/2065."
+    },
+    "heading": "DSA point of contact",
+    "intro": "Ager is a Danish non-profit association (forening). As required by art. 11 and 12 of Regulation (EU) 2022/2065 (Digital Services Act) we publish two distinct points of contact together with a transparency note. The information below is current as of 24 April 2026.",
+    "authorities": {
+      "title": "1. Single point of contact for authorities (art. 11 DSA)",
+      "intro": "Reserved for Member State authorities, the European Commission, and the Board of Digital Services Coordinators.",
+      "emailLabel": "Email",
+      "emailNote": "dedicated mailbox, monitored on business days",
+      "addressLabel": "Postal address",
+      "addressNote": "will be published once the forening is formally constituted; please use email in the meantime",
+      "languagesLabel": "Languages accepted for official communications",
+      "languages": "English, Danish, Italian",
+      "slaLabel": "Target response time",
+      "sla": "48 business hours from receipt"
+    },
+    "users": {
+      "title": "2. Point of contact for recipients of the service (art. 12 DSA)",
+      "intro": "This channel is open to any recipient of the service — readers, publishers, authors or third parties. To keep flows separate, regulatory correspondence must go through the authorities channel above.",
+      "emailLabel": "Email",
+      "emailNote": "we chose a dedicated mailbox rather than a generic support address so the DSA flow stays isolated from product support and qualified requests never drop",
+      "takedownLabel": "Report a specific content item",
+      "takedownLinkText": "Public takedown form (DSA art. 16-17)",
+      "privacyLabel": "GDPR rights (access, erasure, export)",
+      "privacyBody": "Use the authenticated GET /api/me/export endpoint to download your data, or write to dsa-users@agerculture.com stating the right being exercised.",
+      "languagesLabel": "Languages",
+      "languages": "English, Italian"
+    },
+    "transparency": {
+      "title": "3. Transparency (art. 15 DSA)",
+      "body": "Art. 15 DSA requires providers of intermediary services to publish an annual content moderation report. Ager currently falls below the threshold of average monthly EU recipients, so we may apply the simplified form allowed by art. 15(2); we will still publish the first report within 12 months of production launch.",
+      "sizeLabel": "Average monthly active recipients in the EU",
+      "sizeNote": "refreshed quarterly; until audience metrics stabilise the value is shown as a placeholder",
+      "reportLabel": "Transparency report",
+      "reportBody": "The first report will appear on this page and will cover: volumes of takedown requests received and handled, average response time, distribution by requester role, and count of sources opted out (robots.txt / tdmrep.json / ai.txt)."
+    },
+    "otherAuthorities": {
+      "title": "4. Other competent authorities",
+      "intro": "In addition to our internal channels, reports can be directed to the competent national or European authorities:",
+      "agcomLabel": "Agcom — Communications Regulatory Authority (Italy)",
+      "itstLabel": "ITST — Agency for Data Supply and Infrastructure (Denmark)",
+      "edpbLabel": "EDPB — European Data Protection Board (GDPR only)",
+      "datatilsynetLabel": "Datatilsynet — Danish Data Protection Authority",
+      "garanteLabel": "Garante — Italian Data Protection Authority"
+    },
+    "footer": {
+      "updated": "Last updated: 24 April 2026"
     }
   }
 }

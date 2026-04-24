@@ -1,5 +1,6 @@
 import { getArticlePublic } from "@/lib/api/articles";
 import { requestJson } from "@/lib/api/request";
+import type { DisplayMode, LicenseType } from "@/lib/api/types";
 
 export type ArticleSearchItem = {
   articleId: number;
@@ -9,6 +10,9 @@ export type ArticleSearchItem = {
   sourceUrl?: string | null;
   sourceName: string;
   publishedAt: string;
+  licenseType?: LicenseType;
+  displayMode?: DisplayMode;
+  paywallDetected?: boolean;
 };
 
 export type ArticleSearchResponse = {

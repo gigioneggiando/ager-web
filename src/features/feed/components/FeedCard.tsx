@@ -49,6 +49,7 @@ export type FeedCardProps = {
   publishedAt: string;
   topics: string[] | null;
   estimatedReadingMinutes: number;
+  paywallDetected?: boolean;
 };
 
 export default function FeedCard(props: FeedCardProps) {
@@ -64,6 +65,7 @@ export default function FeedCard(props: FeedCardProps) {
     publishedAt,
     topics,
     estimatedReadingMinutes,
+    paywallDetected,
   } = props;
 
   const { locale } = useAppLocale();
@@ -129,6 +131,11 @@ export default function FeedCard(props: FeedCardProps) {
                 <span>•</span>
                 <span>{estimatedReadingMinutes} min</span>
               </>
+            ) : null}
+            {paywallDetected ? (
+              <Badge variant="outline" className="ml-1 rounded-full text-[10px]">
+                {tFeedCard("paywallBadge")}
+              </Badge>
             ) : null}
           </div>
 

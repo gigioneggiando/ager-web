@@ -1,5 +1,7 @@
 ## Ager Web
 
+[![Frontend CI](https://github.com/gigioneggiando/ager-web/actions/workflows/frontend-ci.yml/badge.svg)](https://github.com/gigioneggiando/ager-web/actions/workflows/frontend-ci.yml)
+
 Next.js app (App Router) for the Ager frontend.
 
 ## Setup

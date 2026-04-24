@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { readRefreshCookie, clearRefreshCookie } from "@/lib/auth/cookie";
+import { readRefreshCookie, clearRefreshCookie, clearRoleCookie } from "@/lib/auth/cookie";
 import type { LogoutRequest } from "@/lib/auth/types";
 import {
   appendObservabilityHeaders,
@@ -48,6 +48,7 @@ export async function POST(req: Request) {
       );
 
       await clearRefreshCookie();
+      await clearRoleCookie();
       return toProxyResponse(upstream);
     } catch {
       logProxyEvent("Error", "proxy_request_failed", "Auth logout proxy request failed.", {
@@ -61,5 +62,6 @@ export async function POST(req: Request) {
   }
 
   await clearRefreshCookie();
+  await clearRoleCookie();
   return NextResponse.json({ ok: true });
 }
