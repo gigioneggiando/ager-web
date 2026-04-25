@@ -106,9 +106,9 @@ export default function PasswordStrengthIndicator({ password }: Props) {
         )}
       </div>
 
-      {strength && (strength.warnings.length > 0 || strength.suggestions.length > 0) && (
+      {strength && ((strength.warnings?.length ?? 0) > 0 || (strength.suggestions?.length ?? 0) > 0) && (
         <div className="mt-1 space-y-0.5 text-xs">
-          {strength.warnings.map((w, i) => (
+          {(strength.warnings ?? []).map((w, i) => (
             <div
               key={`w-${i}`}
               style={{ color: "hsl(var(--feedback-warning-fg))" }}
@@ -116,7 +116,7 @@ export default function PasswordStrengthIndicator({ password }: Props) {
               ⚠️ {w}
             </div>
           ))}
-          {strength.suggestions.map((s, i) => (
+          {(strength.suggestions ?? []).map((s, i) => (
             <div
               key={`s-${i}`}
               style={{ color: "hsl(var(--feedback-success-fg))" }}

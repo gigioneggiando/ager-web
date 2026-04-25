@@ -77,9 +77,12 @@ export type PasswordStrengthRequest = {
   password: string;
 };
 
+// Mirrors Ager.Application.DTOs.Users.PasswordStrengthResponse: only `score` and
+// `suggestions` are sent by the backend. `strength` and `warnings` are optional
+// future-proofing fields and must be treated as possibly-undefined at the call site.
 export type PasswordStrengthResponse = {
   score: number;
-  strength: string;
-  warnings: string[];
   suggestions: string[];
+  strength?: string;
+  warnings?: string[];
 };
