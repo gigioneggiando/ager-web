@@ -1,8 +1,8 @@
 import { ApiError } from "@/lib/api/errors";
 import { requestJson, requestVoid } from "@/lib/api/request";
+import { clearCsrfTokenCache, getCsrfRequestToken } from "@/lib/api/csrf";
 import type {
   AuthResultDto,
-  CsrfBootstrapResponse,
   LoginRequest,
   OAuthIdTokenRequest,
   PasswordStrengthRequest,
@@ -24,8 +24,6 @@ export type { LoginRequest, RegisterRequest, AuthResultDto };
 const LEGACY_REFRESH_TOKEN_STORAGE_KEY = "ager.refreshToken";
 const LEGACY_REFRESH_TOKEN_EXPIRES_STORAGE_KEY = "ager.refreshTokenExpiresAt";
 
-let csrfToken: string | null = null;
-let csrfBootstrapPromise: Promise<string | null> | null = null;
 let refreshSingleFlightPromise: Promise<AuthResultDto> | null = null;
 let legacyCleanedUp = false;
 
@@ -69,27 +67,15 @@ function normalizeAuthResult(data: AuthResultDto): AuthResultDto {
   return safe as AuthResultDto;
 }
 
+// Public surface preserved for callers (me.ts, OAuth flows). Implementation is delegated to
+// the shared csrf module so request.ts and auth.ts use the exact same cached token.
 export async function bootstrapCsrf(force = false): Promise<string | null> {
-  if (!force && csrfToken) return csrfToken;
-
-  if (!force && csrfBootstrapPromise) return csrfBootstrapPromise;
-
-  csrfBootstrapPromise = (async () => {
-    const data = await requestJson<CsrfBootstrapResponse>("/api/auth/csrf");
-    csrfToken = data.token ?? null;
-    return csrfToken;
-  })();
-
-  try {
-    return await csrfBootstrapPromise;
-  } finally {
-    csrfBootstrapPromise = null;
-  }
+  if (force) clearCsrfTokenCache();
+  return getCsrfRequestToken(force);
 }
 
 export async function getCsrfHeaderValue(): Promise<string | null> {
-  if (csrfToken) return csrfToken;
-  return bootstrapCsrf();
+  return getCsrfRequestToken();
 }
 
 export async function requestLoginOtp(email: string): Promise<void> {
