@@ -341,15 +341,6 @@ export default function RegisterPage() {
                   <PasswordStrengthIndicator password={password} locale={locale} />
                   <p className="mt-1 text-xs text-muted-foreground">{t("passwordHint")}</p>
                 </div>
-                {captchaEnabled && (
-                  <div className="space-y-2">
-                    <HCaptchaWidget
-                      siteKey={hCaptchaSiteKey}
-                      onTokenChange={setCaptchaToken}
-                      disabled={pending}
-                    />
-                  </div>
-                )}
                 {info && <p className="text-sm text-muted-foreground">{info}</p>}
                 {isRateLimited && (
                   <p className="text-sm text-muted-foreground">
@@ -362,10 +353,16 @@ export default function RegisterPage() {
                   <Button type="submit" disabled={pending || isRateLimited} className="flex-1">
                     {pending ? t("verifyLoading") : t("verify")}
                   </Button>
+                  {/*
+                    "Resend" reuses the request-code endpoint, which is rate-limited and
+                    already protected by the captcha solved at step 1 (its token is reused
+                    here from `captchaToken`). Re-rendering the widget at this step would
+                    force the user to solve a fresh challenge — annoying and unnecessary.
+                  */}
                   <Button
                     type="button"
                     variant="secondary"
-                    disabled={pending || isRateLimited || !canResend || (captchaEnabled && !captchaToken)}
+                    disabled={pending || isRateLimited || !canResend}
                     onClick={onResend}
                     className="flex-1"
                   >

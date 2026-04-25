@@ -12,6 +12,7 @@ import {
   oauthGoogle as apiOauthGoogle,
   oauthApple as apiOauthApple,
 } from "@/lib/api/auth";
+import { clearCsrfTokenCache } from "@/lib/api/csrf";
 import type { UserRole } from "@/lib/auth/types";
 
 type SessionState = {
@@ -155,6 +156,10 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     }
 
     const data = await apiLogin(payload);
+    // Identity changed: invalidate any cached antiforgery token. ASP.NET binds the
+    // (cookieToken, requestToken) pair to the user's claims; an anonymous-session token
+    // won't validate once the JWT carries a real `sub`.
+    clearCsrfTokenCache();
     updateSession({ ready: true, userId: data.userId, accessToken: data.accessToken, accessTokenExpiresAt: data.accessTokenExpiresAt, role: normaliseRole(data.role) });
   }, [updateSession]);
 
@@ -172,16 +177,19 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
 
   const register = useCallback(async (payload: { username: string; email: string; otpCode: string; password?: string | null }) => {
     const data = await apiRegisterWithOtp(payload.username, payload.email, payload.otpCode, payload.password);
+    clearCsrfTokenCache();
     updateSession({ ready: true, userId: data.userId, accessToken: data.accessToken, accessTokenExpiresAt: data.accessTokenExpiresAt, role: normaliseRole(data.role) });
   }, [updateSession]);
 
   const oauthGoogle = useCallback(async (idToken: string) => {
     const data = await apiOauthGoogle(idToken);
+    clearCsrfTokenCache();
     updateSession({ ready: true, userId: data.userId, accessToken: data.accessToken, accessTokenExpiresAt: data.accessTokenExpiresAt, role: normaliseRole(data.role) });
   }, [updateSession]);
 
   const oauthApple = useCallback(async (idToken: string) => {
     const data = await apiOauthApple(idToken);
+    clearCsrfTokenCache();
     updateSession({ ready: true, userId: data.userId, accessToken: data.accessToken, accessTokenExpiresAt: data.accessTokenExpiresAt, role: normaliseRole(data.role) });
   }, [updateSession]);
 
@@ -189,6 +197,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     try {
       await apiLogout(state.accessToken);
     } finally {
+      clearCsrfTokenCache();
       clearSession();
     }
   }, [state.accessToken, clearSession]);
