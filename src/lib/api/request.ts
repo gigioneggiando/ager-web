@@ -49,8 +49,11 @@ async function sendRequest(
   let csrfToken: string | null = null;
   if (STATE_CHANGING_METHODS.has(method)) {
     // Fast-path: use the cached token if we have one (no extra network hop).
-    // First-time and post-cache-clear requests fall through to a single bootstrap call.
-    csrfToken = peekCachedCsrfToken() ?? (await getCsrfRequestToken());
+    // First-time and post-cache-clear requests fall through to a single bootstrap call —
+    // and we pass the bearer so the backend mints a token-pair bound to the SAME identity
+    // that will be presented at validation time. Without this, an anonymous bootstrap
+    // followed by an authenticated POST always fails ASP.NET antiforgery.
+    csrfToken = peekCachedCsrfToken() ?? (await getCsrfRequestToken(options.accessToken ?? null));
   }
 
   const response = await fetch(input, {

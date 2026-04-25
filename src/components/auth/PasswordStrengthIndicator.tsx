@@ -9,9 +9,11 @@ import { useDebouncedValue } from "@/lib/useDebouncedValue";
 type Props = {
   password: string;
   locale?: "en" | "it";
+  email?: string | null;
+  username?: string | null;
 };
 
-export default function PasswordStrengthIndicator({ password }: Props) {
+export default function PasswordStrengthIndicator({ password, email, username }: Props) {
   const t = useTranslations("auth.passwordStrength");
   const debouncedPassword = useDebouncedValue(password, 300);
   const [strength, setStrength] = useState<PasswordStrengthResponse | null>(null);
@@ -26,7 +28,7 @@ export default function PasswordStrengthIndicator({ password }: Props) {
     let cancelled = false;
     setLoading(true);
 
-    getPasswordStrength(debouncedPassword)
+    getPasswordStrength(debouncedPassword, { email, username })
       .then((res) => {
         if (!cancelled) {
           setStrength(res);
@@ -43,7 +45,7 @@ export default function PasswordStrengthIndicator({ password }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [debouncedPassword]);
+  }, [debouncedPassword, email, username]);
 
   const strengthInfo = useMemo(() => {
     if (!strength) return null;

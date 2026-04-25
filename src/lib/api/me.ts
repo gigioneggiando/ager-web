@@ -9,12 +9,15 @@ import type {
 
 export { ApiError };
 
-async function buildRequestHeaders(csrf?: boolean): Promise<HeadersInit | undefined> {
-  if (!csrf) {
+async function buildRequestHeaders(accessToken: string | null): Promise<HeadersInit | undefined> {
+  if (!accessToken) {
     return undefined;
   }
 
-  const csrfToken = await getCsrfHeaderValue();
+  // Pass the bearer to the CSRF bootstrap so backend mints an antiforgery token-pair
+  // bound to the authenticated user's claims. Anonymous tokens fail validation when
+  // the actual mutating call arrives with the bearer attached.
+  const csrfToken = await getCsrfHeaderValue(accessToken);
   if (!csrfToken) {
     return undefined;
   }
@@ -37,7 +40,7 @@ export async function patchMe(
     method: "PATCH",
     body,
     accessToken,
-    headers: await buildRequestHeaders(true),
+    headers: await buildRequestHeaders(accessToken),
   });
 }
 
@@ -49,7 +52,7 @@ export async function changeMyPassword(
     method: "POST",
     body,
     accessToken,
-    headers: await buildRequestHeaders(true),
+    headers: await buildRequestHeaders(accessToken),
   });
 }
 
@@ -57,6 +60,6 @@ export async function deleteMe(accessToken: string): Promise<void> {
   await requestVoid("/api/me", {
     method: "DELETE",
     accessToken,
-    headers: await buildRequestHeaders(true),
+    headers: await buildRequestHeaders(accessToken),
   });
 }

@@ -338,7 +338,7 @@ export default function RegisterPage() {
                   {fieldErrors.password?.[0] && (
                     <p className="text-sm text-destructive">{fieldErrors.password[0]}</p>
                   )}
-                  <PasswordStrengthIndicator password={password} locale={locale} />
+                  <PasswordStrengthIndicator password={password} locale={locale} email={email} username={username} />
                   <p className="mt-1 text-xs text-muted-foreground">{t("passwordHint")}</p>
                 </div>
                 {info && <p className="text-sm text-muted-foreground">{info}</p>}

@@ -18,14 +18,22 @@ let inFlight: Promise<string | null> | null = null;
 
 type CsrfResponse = { token?: string | null };
 
-async function fetchToken(): Promise<string | null> {
+async function fetchToken(accessToken: string | null): Promise<string | null> {
   // Use raw fetch (not requestJson from request.ts) to avoid an import cycle.
   // credentials: "include" so the response Set-Cookie for XSRF-TOKEN actually lands.
+  //
+  // Critical: when an access token is available we MUST forward it on the bootstrap call.
+  // ASP.NET antiforgery binds the (cookieToken, requestToken) pair to the authenticated
+  // user's claims. A bootstrap done anonymously yields a pair that the backend will
+  // reject when the actual state-changing request arrives with a Bearer header — the
+  // identity at validation time differs from the identity at minting time.
   try {
+    const headers: Record<string, string> = { Accept: "application/json" };
+    if (accessToken) headers.Authorization = `Bearer ${accessToken}`;
     const res = await fetch("/api/auth/csrf", {
       method: "GET",
       credentials: "include",
-      headers: { Accept: "application/json" },
+      headers,
     });
     if (!res.ok) return null;
     const data = (await res.json()) as CsrfResponse;
@@ -35,13 +43,16 @@ async function fetchToken(): Promise<string | null> {
   }
 }
 
-export async function getCsrfRequestToken(force = false): Promise<string | null> {
+export async function getCsrfRequestToken(
+  accessToken: string | null = null,
+  force = false
+): Promise<string | null> {
   if (!force && cachedToken) return cachedToken;
   if (!force && inFlight) return inFlight;
 
   inFlight = (async () => {
     try {
-      const token = await fetchToken();
+      const token = await fetchToken(accessToken);
       cachedToken = token;
       return token;
     } finally {

@@ -73,8 +73,18 @@ export type RestoreAccountRequest = {
   otpCode: string;
 };
 
+// Mirrors Ager.Application.DTOs.Users.PasswordStrengthRequest. The backend intentionally
+// never sees the plaintext: the client computes feature flags (length + character classes
+// + heuristic flags) and sends those. The previous shape — `{ password: string }` — was
+// silently deserialised to all-false / length=0 on the backend, capping every score at 0.
 export type PasswordStrengthRequest = {
-  password: string;
+  length: number;
+  hasLower: boolean;
+  hasUpper: boolean;
+  hasDigit: boolean;
+  hasSymbol: boolean;
+  hasCommonPattern: boolean;
+  containsPersonalInfo: boolean;
 };
 
 // Mirrors Ager.Application.DTOs.Users.PasswordStrengthResponse: only `score` and

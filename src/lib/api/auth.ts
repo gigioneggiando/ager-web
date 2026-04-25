@@ -69,13 +69,17 @@ function normalizeAuthResult(data: AuthResultDto): AuthResultDto {
 
 // Public surface preserved for callers (me.ts, OAuth flows). Implementation is delegated to
 // the shared csrf module so request.ts and auth.ts use the exact same cached token.
-export async function bootstrapCsrf(force = false): Promise<string | null> {
+//
+// `accessToken` is forwarded so the antiforgery token-pair gets bound to the authenticated
+// user's claims when one is available. ASP.NET will otherwise mint anonymous tokens that
+// the backend rejects on the next authenticated state-changing call.
+export async function bootstrapCsrf(accessToken: string | null = null, force = false): Promise<string | null> {
   if (force) clearCsrfTokenCache();
-  return getCsrfRequestToken(force);
+  return getCsrfRequestToken(accessToken, force);
 }
 
-export async function getCsrfHeaderValue(): Promise<string | null> {
-  return getCsrfRequestToken();
+export async function getCsrfHeaderValue(accessToken: string | null = null): Promise<string | null> {
+  return getCsrfRequestToken(accessToken);
 }
 
 export async function requestLoginOtp(email: string): Promise<void> {
@@ -212,7 +216,7 @@ export async function logout(accessToken: string | null): Promise<void> {
   const headers: Record<string, string> = {};
   if (accessToken) headers.Authorization = `Bearer ${accessToken}`;
 
-  const csrf = await getCsrfHeaderValue().catch(() => null);
+  const csrf = await getCsrfHeaderValue(accessToken).catch(() => null);
   if (csrf) headers["X-CSRF-TOKEN"] = csrf;
 
   try {
@@ -249,9 +253,59 @@ export async function restoreAccount(email: string, otpCode: string): Promise<vo
   });
 }
 
-export async function getPasswordStrength(password: string): Promise<PasswordStrengthResponse> {
+// Common-weakness heuristics. Kept terse on purpose — the backend does the authoritative
+// scoring and adds suggestions. We only need to flag obviously-weak inputs so the score
+// gets the correct -1 penalty.
+const COMMON_WEAK_TOKENS = [
+  "password", "passw0rd", "qwerty", "azerty", "letmein", "admin", "welcome",
+  "iloveyou", "monkey", "dragon", "abc123", "111111", "123123", "654321",
+];
+
+function detectCommonPattern(value: string): boolean {
+  const lower = value.toLowerCase();
+  if (COMMON_WEAK_TOKENS.some((t) => lower.includes(t))) return true;
+  // Sequential runs of 4+ digits or letters (e.g. "1234", "abcd")
+  if (/(?:0123|1234|2345|3456|4567|5678|6789)/.test(lower)) return true;
+  if (/(?:abcd|bcde|cdef|defg|qwer|wert|erty|rtyu|asdf|sdfg)/.test(lower)) return true;
+  // 4+ identical characters in a row (e.g. "aaaa", "1111")
+  if (/(.)\1{3,}/.test(lower)) return true;
+  return false;
+}
+
+function detectPersonalInfo(value: string, identifiers: ReadonlyArray<string | undefined | null>): boolean {
+  const lower = value.toLowerCase();
+  for (const raw of identifiers) {
+    if (!raw) continue;
+    const trimmed = raw.trim().toLowerCase();
+    if (trimmed.length < 3) continue;
+    if (lower.includes(trimmed)) return true;
+    // Email local-part: "alice@example.com" → "alice"
+    const at = trimmed.indexOf("@");
+    if (at > 2 && lower.includes(trimmed.slice(0, at))) return true;
+  }
+  return false;
+}
+
+export type PasswordStrengthContext = {
+  email?: string | null;
+  username?: string | null;
+};
+
+export async function getPasswordStrength(
+  password: string,
+  context: PasswordStrengthContext = {}
+): Promise<PasswordStrengthResponse> {
+  const features: PasswordStrengthRequest = {
+    length: password.length,
+    hasLower: /[a-z]/.test(password),
+    hasUpper: /[A-Z]/.test(password),
+    hasDigit: /\d/.test(password),
+    hasSymbol: /[^A-Za-z0-9]/.test(password),
+    hasCommonPattern: detectCommonPattern(password),
+    containsPersonalInfo: detectPersonalInfo(password, [context.email, context.username]),
+  };
   return requestJson<PasswordStrengthResponse>("/api/auth/password-strength", {
     method: "POST",
-    body: { password } satisfies PasswordStrengthRequest,
+    body: features,
   });
 }
