@@ -1,4 +1,5 @@
 import { parseApiError } from "@/lib/api/errors";
+import { getCsrfRequestToken, peekCachedCsrfToken } from "@/lib/api/csrf";
 
 type ApiRequestOptions = {
   method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
@@ -11,23 +12,9 @@ type ApiRequestOptions = {
 };
 
 const STATE_CHANGING_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
-const CSRF_COOKIE = "XSRF-TOKEN";
 const CSRF_HEADER = "X-CSRF-TOKEN";
 
-function readCsrfFromCookie(): string | null {
-  if (typeof document === "undefined") return null;
-  const raw = document.cookie;
-  if (!raw) return null;
-  for (const part of raw.split(";")) {
-    const [name, ...rest] = part.split("=");
-    if (name?.trim() === CSRF_COOKIE) {
-      return decodeURIComponent(rest.join("=").trim());
-    }
-  }
-  return null;
-}
-
-function buildHeaders(options: ApiRequestOptions, expectsJson: boolean): Headers {
+function buildHeaders(options: ApiRequestOptions, expectsJson: boolean, csrfToken: string | null): Headers {
   const headers = new Headers(options.headers ?? {});
 
   if (expectsJson && !headers.has("Accept")) {
@@ -42,15 +29,12 @@ function buildHeaders(options: ApiRequestOptions, expectsJson: boolean): Headers
     headers.set("Authorization", `Bearer ${options.accessToken}`);
   }
 
-  // Double-submit CSRF: on every state-changing request, if the XSRF-TOKEN cookie exists
-  // (set by GET /api/auth/csrf) mirror it into the X-CSRF-TOKEN header. Both the Next.js
-  // edge (enforceCsrfIfCookiePresent) and the backend (RequireCsrfIfConfigured) require
-  // the match. If the cookie is absent (non-browser client), we skip — the backend treats
-  // this as a non-cookie flow and the edge lets it through.
+  // ASP.NET antiforgery requires the requestToken (returned by GET /api/auth/csrf) in the
+  // X-CSRF-TOKEN header — NOT the XSRF-TOKEN cookie value. The two are cryptographically
+  // related but distinct, so cookie-mirror approaches always fail on the backend.
   const method = (options.method ?? "GET").toUpperCase();
-  if (STATE_CHANGING_METHODS.has(method) && !headers.has(CSRF_HEADER)) {
-    const csrf = readCsrfFromCookie();
-    if (csrf) headers.set(CSRF_HEADER, csrf);
+  if (STATE_CHANGING_METHODS.has(method) && !headers.has(CSRF_HEADER) && csrfToken) {
+    headers.set(CSRF_HEADER, csrfToken);
   }
 
   return headers;
@@ -61,9 +45,17 @@ async function sendRequest(
   options: ApiRequestOptions = {},
   expectsJson: boolean
 ): Promise<Response> {
+  const method = (options.method ?? "GET").toUpperCase();
+  let csrfToken: string | null = null;
+  if (STATE_CHANGING_METHODS.has(method)) {
+    // Fast-path: use the cached token if we have one (no extra network hop).
+    // First-time and post-cache-clear requests fall through to a single bootstrap call.
+    csrfToken = peekCachedCsrfToken() ?? (await getCsrfRequestToken());
+  }
+
   const response = await fetch(input, {
     method: options.method ?? "GET",
-    headers: buildHeaders(options, expectsJson),
+    headers: buildHeaders(options, expectsJson, csrfToken),
     body: options.body === undefined ? undefined : JSON.stringify(options.body),
     signal: options.signal,
     credentials: options.credentials,
