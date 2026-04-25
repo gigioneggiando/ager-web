@@ -1,55 +1,23 @@
 import { NextResponse } from "next/server";
 
-const CSRF_COOKIE = "XSRF-TOKEN";
-const CSRF_HEADER = "x-csrf-token";
-const STATE_CHANGING_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
-
-// Edge-level CSRF double-submit check. For every state-changing proxy route, require the
-// X-CSRF-TOKEN header to match the XSRF-TOKEN cookie (constant-time). If the cookie is
-// missing the request is allowed — preserving the opt-in model used by the backend
-// (Security:Csrf:EnforceOnCookieRequests) — but when the cookie is present it MUST match
-// the header. Returns a NextResponse on failure; returns null if the request may proceed.
-export function enforceCsrfIfCookiePresent(req: Request): NextResponse | null {
-  if (!STATE_CHANGING_METHODS.has(req.method.toUpperCase())) return null;
-
-  const cookies = parseCookies(req.headers.get("cookie"));
-  const cookieToken = cookies.get(CSRF_COOKIE);
-  if (!cookieToken) return null;
-
-  const headerToken = req.headers.get(CSRF_HEADER);
-  if (!headerToken || !constantTimeEqual(cookieToken, headerToken)) {
-    return NextResponse.json(
-      {
-        title: "CSRF validation failed",
-        detail: "The request is missing or has an invalid CSRF token.",
-        status: 403,
-        errorCode: "csrf_validation_failed",
-      },
-      { status: 403 }
-    );
-  }
+// Edge-level CSRF check is a no-op now. Kept exported so existing proxy route handlers
+// don't need to be touched.
+//
+// Why: ASP.NET Core antiforgery generates a (cookieToken, requestToken) pair where the
+// cookie value and the header value differ — the cookie holds the cookieToken (carried
+// in XSRF-TOKEN), the header holds the requestToken (returned by GET /api/auth/csrf).
+// The previous implementation here did plain double-submit (cookie === header). That
+// only worked because the frontend mirrored the cookie value into the header — which
+// in turn caused the backend's `Antiforgery.ValidateRequestAsync` to reject every
+// real state-changing request (cookieToken ≠ requestToken). The frontend has been
+// fixed to send the actual requestToken; the edge can no longer compare equality.
+//
+// The backend `RequireCsrfIfConfigured` (CsrfEndpointFilter.cs) is the authoritative
+// validator and it understands the antiforgery scheme correctly. The edge layer would
+// have to call /api/auth/csrf itself and crypto-validate the pair — out of scope for
+// a stateless proxy. We delegate fully to the backend.
+export function enforceCsrfIfCookiePresent(_req: Request): NextResponse | null {
   return null;
-}
-
-function parseCookies(header: string | null): Map<string, string> {
-  const out = new Map<string, string>();
-  if (!header) return out;
-  for (const part of header.split(";")) {
-    const [rawName, ...rest] = part.split("=");
-    if (!rawName) continue;
-    const name = rawName.trim();
-    if (!name) continue;
-    const value = rest.join("=").trim();
-    out.set(name, decodeURIComponent(value));
-  }
-  return out;
-}
-
-function constantTimeEqual(a: string, b: string): boolean {
-  if (a.length !== b.length) return false;
-  let diff = 0;
-  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
-  return diff === 0;
 }
 
 // Normalise upstream error bodies so internal details (stack traces, DB messages, full

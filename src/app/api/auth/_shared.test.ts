@@ -15,88 +15,23 @@ function makeRequest(
   return new Request("http://ager.local/api/anything", { method, headers });
 }
 
-// Edge-level CSRF enforcement. Regression tests for each bypass vector:
-//   - state-changing method without cookie -> passes (non-browser caller, backend enforces anyway)
-//   - state-changing method WITH cookie but missing header -> rejected
-//   - state-changing method WITH cookie but mismatched header -> rejected
-//   - state-changing method WITH cookie and matching header -> passes
-//   - safe methods (GET/HEAD/OPTIONS) always pass regardless
+// `enforceCsrfIfCookiePresent` is now a no-op — see the comment in `_shared.ts`. The
+// edge layer used to do plain double-submit (cookie===header), but that scheme is
+// incompatible with the backend's ASP.NET antiforgery (cookieToken ≠ requestToken).
+// All CSRF validation is now centralised in the backend `CsrfEndpointFilter`.
 describe("enforceCsrfIfCookiePresent", () => {
-  it("passes through GET regardless of cookie state", () => {
-    const res = enforceCsrfIfCookiePresent(
-      makeRequest("GET", { cookie: "XSRF-TOKEN=abc" })
-    );
-    expect(res).toBeNull();
-  });
-
-  it("passes through POST when no XSRF-TOKEN cookie is present", () => {
-    const res = enforceCsrfIfCookiePresent(
-      makeRequest("POST", { csrfHeader: "whatever" })
-    );
-    expect(res).toBeNull();
-  });
-
-  it("rejects POST when cookie is present and header is missing", () => {
-    const res = enforceCsrfIfCookiePresent(
-      makeRequest("POST", { cookie: "XSRF-TOKEN=expected" })
-    );
-    expect(res).not.toBeNull();
-    expect(res?.status).toBe(403);
-  });
-
-  it("rejects POST when cookie and header disagree", () => {
-    const res = enforceCsrfIfCookiePresent(
-      makeRequest("POST", {
-        cookie: "XSRF-TOKEN=expected",
-        csrfHeader: "different",
-      })
-    );
-    expect(res).not.toBeNull();
-    expect(res?.status).toBe(403);
-  });
-
-  it("accepts POST when cookie and header match", () => {
-    const res = enforceCsrfIfCookiePresent(
-      makeRequest("POST", {
-        cookie: "XSRF-TOKEN=token123",
-        csrfHeader: "token123",
-      })
-    );
-    expect(res).toBeNull();
-  });
-
-  it.each([
-    ["PUT"],
-    ["PATCH"],
-    ["DELETE"],
-  ])("rejects %s with cookie but mismatched header", (method) => {
-    const res = enforceCsrfIfCookiePresent(
-      makeRequest(method, {
-        cookie: "XSRF-TOKEN=t",
-        csrfHeader: "other",
-      })
-    );
-    expect(res?.status).toBe(403);
-  });
-
-  it("uses constant-time comparison — equal-length but different strings still reject", () => {
-    const res = enforceCsrfIfCookiePresent(
-      makeRequest("POST", {
-        cookie: "XSRF-TOKEN=aaaaaaaa",
-        csrfHeader: "bbbbbbbb",
-      })
-    );
-    expect(res?.status).toBe(403);
-  });
-
-  it("handles multiple cookies — picks the right one", () => {
-    const res = enforceCsrfIfCookiePresent(
-      makeRequest("POST", {
-        cookie: "session=s; XSRF-TOKEN=tok; ager_refresh=r",
-        csrfHeader: "tok",
-      })
-    );
-    expect(res).toBeNull();
+  it("returns null for any request shape (delegated to backend)", () => {
+    const cases = [
+      makeRequest("GET", { cookie: "XSRF-TOKEN=abc" }),
+      makeRequest("POST"),
+      makeRequest("POST", { cookie: "XSRF-TOKEN=expected" }),
+      makeRequest("POST", { cookie: "XSRF-TOKEN=a", csrfHeader: "b" }),
+      makeRequest("POST", { cookie: "XSRF-TOKEN=t", csrfHeader: "t" }),
+      makeRequest("DELETE", { cookie: "XSRF-TOKEN=t", csrfHeader: "other" }),
+    ];
+    for (const req of cases) {
+      expect(enforceCsrfIfCookiePresent(req)).toBeNull();
+    }
   });
 });
 
