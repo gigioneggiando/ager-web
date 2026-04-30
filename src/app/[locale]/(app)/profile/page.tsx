@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
+import { usePathname, useRouter as useIntlRouter } from "@/i18n/navigation";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -53,6 +54,9 @@ export default function ProfilePage() {
   const update = useUpdateMe();
   const changePw = useChangePassword();
   const del = useDeleteMe();
+
+  const intlRouter = useIntlRouter();
+  const localePathname = usePathname();
 
   const [draft, setDraft] = useState({
     username: "",
@@ -109,6 +113,15 @@ export default function ProfilePage() {
       await update.mutateAsync(patch);
       setProfileFieldErrors({});
       toast(t("profileUpdated"));
+
+      const nextLocale = patch.locale;
+      if ((nextLocale === "it" || nextLocale === "en") && nextLocale !== locale) {
+        document.cookie = `NEXT_LOCALE=${nextLocale}; path=/; max-age=${60 * 60 * 24 * 365}; samesite=lax`;
+        try {
+          window.localStorage.setItem("locale-preference", nextLocale);
+        } catch {}
+        intlRouter.replace(localePathname, { locale: nextLocale });
+      }
     } catch (e) {
       const err = e as ApiError;
       if (err.status === 422) {

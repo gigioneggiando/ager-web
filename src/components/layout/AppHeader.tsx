@@ -4,6 +4,7 @@ import { Bell, CircleUser, Settings } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import ThemeToggle from "@/components/layout/ThemeToggle";
+import LocaleToggle from "@/components/layout/LocaleToggle";
 import HeaderSearch from "@/components/search/HeaderSearch";
 import {
   DropdownMenu,
@@ -59,6 +60,14 @@ export default function AppHeader() {
       </div>
 
       <div className="ml-auto flex items-center gap-2 md:ml-0">
+        <LocaleToggle
+          labels={{
+            language: t("language"),
+            italian: t("languageItalian"),
+            english: t("languageEnglish"),
+          }}
+        />
+
         <ThemeToggle
           labels={{
             theme: t("theme"),

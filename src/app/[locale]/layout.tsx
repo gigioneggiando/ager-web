@@ -3,6 +3,7 @@ import "../globals.css";
 import Providers from "../providers";
 import { notFound } from "next/navigation";
 import { Toaster } from "@/components/ui/sonner";
+import LocaleAutoDetect from "@/components/layout/LocaleAutoDetect";
 
 // Statically declare the supported locales so /en and /it are built
 export function generateStaticParams() {
@@ -28,6 +29,7 @@ export default async function LocaleLayout({
    return (
     <NextIntlClientProvider locale={locale} messages={messages}>
       <Providers>
+        <LocaleAutoDetect />
         {children}
         <Toaster position="bottom-right" richColors /> {/* works just like before */}
       </Providers>
