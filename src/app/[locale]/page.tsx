@@ -1,6 +1,8 @@
 import Link from "next/link";
 import Image from "next/image";
 import type { Metadata } from "next";
+import { getTranslations } from "next-intl/server";
+import LocaleToggle from "@/components/layout/LocaleToggle";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -57,6 +59,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 export default async function Home({ params }: PageProps) {
   const { locale } = await params;
   const isIt = locale === "it";
+  const tHeader = await getTranslations({ locale, namespace: "layout.header" });
 
   const pageUrl = `${siteUrl}/${locale}`;
   const webSiteJsonLd = {
@@ -170,6 +173,13 @@ export default async function Home({ params }: PageProps) {
           </nav>
 
           <div className="flex items-center gap-2">
+            <LocaleToggle
+              labels={{
+                language: tHeader("language"),
+                italian: tHeader("languageItalian"),
+                english: tHeader("languageEnglish"),
+              }}
+            />
             <Button asChild variant="outline" className="hidden sm:inline-flex">
               <a href="#social">{isIt ? "Scopri di più" : "Learn more"}</a>
             </Button>

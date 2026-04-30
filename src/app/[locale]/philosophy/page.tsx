@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { getTranslations } from "next-intl/server";
+import LocaleToggle from "@/components/layout/LocaleToggle";
 import { PhilosophyPage } from "@/features/philosophy/components/PhilosophyPage";
 import { philosophyContent, type PhilosophyLang } from "@/features/philosophy/philosophyContent";
 
@@ -44,6 +46,7 @@ export default async function LocalizedPhilosophyPage({ params }: PageProps) {
   }
 
   const lang = locale as PhilosophyLang;
+  const tHeader = await getTranslations({ locale: lang, namespace: "layout.header" });
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "WebPage",
@@ -64,6 +67,15 @@ export default async function LocalizedPhilosophyPage({ params }: PageProps) {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
+      <div className="fixed right-4 top-4 z-50">
+        <LocaleToggle
+          labels={{
+            language: tHeader("language"),
+            italian: tHeader("languageItalian"),
+            english: tHeader("languageEnglish"),
+          }}
+        />
+      </div>
       <PhilosophyPage locale={lang} content={philosophyContent[lang]} />
     </>
   );
