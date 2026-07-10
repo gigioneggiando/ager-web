@@ -5,6 +5,21 @@ test("home loads", async ({ page }) => {
   await expect(page.getByRole("heading", { name: "Ager" })).toBeVisible();
 });
 
+test("redirects /form to Google Forms", async ({ page }) => {
+  await page.goto("/form");
+  await expect(page).toHaveURL(/forms\.gle|google\.com/);
+});
+
+test("redirects /it/form to Google Forms", async ({ page }) => {
+  await page.goto("/it/form");
+  await expect(page).toHaveURL(/forms\.gle|google\.com/);
+});
+
+test("redirects /en/form to Google Forms", async ({ page }) => {
+  await page.goto("/en/form");
+  await expect(page).toHaveURL(/forms\.gle|google\.com/);
+});
+
 test("theme selection persists after reload", async ({ page }) => {
   await page.goto("/en/login");
 

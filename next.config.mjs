@@ -38,6 +38,25 @@ const baseConfig = {
   experimental: {
     serverActions: serverActionOrigins.length > 0 ? { allowedOrigins: serverActionOrigins } : {}
   },
+  async redirects() {
+    return [
+      {
+        source: '/form',
+        destination: 'https://forms.gle/fi7AsRQxMAHqnEQ39',
+        permanent: false,
+      },
+      {
+        source: '/it/form',
+        destination: 'https://forms.gle/fi7AsRQxMAHqnEQ39',
+        permanent: false,
+      },
+      {
+        source: '/en/form',
+        destination: 'https://forms.gle/fi7AsRQxMAHqnEQ39',
+        permanent: false,
+      },
+    ];
+  },
   images: {
     // Only the hostnames we actually serve images from. No wildcard *.cloudfront.net or
     // *.akamaihd.net — any attacker can publish under those.

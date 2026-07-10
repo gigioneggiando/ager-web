@@ -31,6 +31,25 @@ export default withNextIntl({
     serverActions:
       serverActionOrigins.length > 0 ? { allowedOrigins: serverActionOrigins } : {},
   },
+  async redirects() {
+    return [
+      {
+        source: '/form',
+        destination: 'https://forms.gle/fi7AsRQxMAHqnEQ39',
+        permanent: false,
+      },
+      {
+        source: '/it/form',
+        destination: 'https://forms.gle/fi7AsRQxMAHqnEQ39',
+        permanent: false,
+      },
+      {
+        source: '/en/form',
+        destination: 'https://forms.gle/fi7AsRQxMAHqnEQ39',
+        permanent: false,
+      },
+    ];
+  },
   images: {
     // Keep both configs in sync with next.config.mjs.
     remotePatterns: [
