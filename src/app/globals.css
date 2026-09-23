@@ -91,3 +91,30 @@
     @apply bg-background text-foreground;
   }
 }
+
+/*
+ * Beta onboarding palette.
+ * Scoped to .beta-theme: the onboarding has its own brand look (cream + navy)
+ * that does not follow the app tokens, but it still honours light/dark.
+ */
+.beta-theme {
+  --beta-bg: #efe9df;
+  --beta-ink: #0f2a44;
+  --beta-body: #55606e;
+  --beta-muted: #8a8f97;
+  --beta-line: #cfc6b9;
+  --beta-cta: #0f172a;
+  --beta-cta-ink: #ffffff;
+  --beta-accent: #6ea8d8;
+}
+
+.dark .beta-theme {
+  --beta-bg: #0f172a;
+  --beta-ink: #efe9df;
+  --beta-body: #b9c2ce;
+  --beta-muted: #7a8494;
+  --beta-line: #2a3648;
+  --beta-cta: #efe9df;
+  --beta-cta-ink: #0f172a;
+  --beta-accent: #6ea8d8;
+}
