@@ -99,22 +99,34 @@
  */
 .beta-theme {
   --beta-bg: #efe9df;
-  --beta-ink: #0f2a44;
-  --beta-body: #55606e;
-  --beta-muted: #8a8f97;
-  --beta-line: #cfc6b9;
+  --beta-ink: #1c1c1c;
+  --beta-navy: #0f2a44;
   --beta-cta: #0f172a;
-  --beta-cta-ink: #ffffff;
+  --beta-cta-ink: #f9faf7;
+  --beta-dot-idle: rgba(107, 114, 128, 0.8);
+  --beta-placeholder: #64748b;
   --beta-accent: #6ea8d8;
 }
 
 .dark .beta-theme {
-  --beta-bg: #0f172a;
+  --beta-bg: #12161f;
   --beta-ink: #efe9df;
-  --beta-body: #b9c2ce;
-  --beta-muted: #7a8494;
-  --beta-line: #2a3648;
+  --beta-navy: #9cc2e4;
   --beta-cta: #efe9df;
   --beta-cta-ink: #0f172a;
+  --beta-dot-idle: rgba(148, 156, 170, 0.8);
+  --beta-placeholder: #94a3b8;
   --beta-accent: #6ea8d8;
+}
+
+/*
+ * The onboarding is a pixel-exact 402x874 Figma frame. It is rendered at that
+ * size and scaled as a whole, so nothing reflows and the design stays identical
+ * on every screen: never larger than 1.25x, never wider or taller than the viewport.
+ */
+.beta-stage {
+  width: 402px;
+  height: 874px;
+  transform: scale(min(1.25, 100vw / 402, 100dvh / 874));
+  transform-origin: center center;
 }

@@ -739,7 +739,8 @@
       "consentContact": "You can write to me to ask how the beta went",
       "consentUpdates": "I want to get occasional updates about Ager",
       "invalid": "Check the address: that does not look like a valid email",
-      "cta": "Confirm email"
+      "cta": "Confirm email",
+      "failed": "We could not save your email. Please try again shortly"
     },
     "done": {
       "title": "You're in",

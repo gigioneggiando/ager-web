@@ -2,51 +2,74 @@
 
 import Image from "next/image";
 import { useTranslations } from "next-intl";
-import { BetaLead, BetaTitle } from "./BetaUI";
+import BetaSocials from "./BetaSocials";
+import { Box, Title } from "./BetaUI";
 
-const bold = (chunks: React.ReactNode) => <strong className="font-semibold">{chunks}</strong>;
+const bold = (chunks: React.ReactNode) => <strong className="font-bold">{chunks}</strong>;
+
+const INK = "var(--beta-ink)";
+
+/** 12/15 body copy. */
+const body12: React.CSSProperties = { fontSize: 12, lineHeight: "15px", color: INK };
+/** 16/19, used for the longer paragraph on the email screen. */
+const body16: React.CSSProperties = { fontSize: 16, lineHeight: "19px", color: INK };
 
 /** 1 - What Ager is. */
 export function StepIntro() {
   const t = useTranslations("beta.intro");
   return (
-    <div className="space-y-4">
-      <BetaTitle>{t("title")}</BetaTitle>
-      <BetaLead>{t.rich("body", { b: bold })}</BetaLead>
-    </div>
+    <>
+      <Title top={381} color="var(--beta-navy)">
+        {t("title")}
+      </Title>
+      <Box left={30} top={437} width={342}>
+        <p className="text-center" style={body12}>
+          {t.rich("body", { b: bold })}
+        </p>
+      </Box>
+    </>
   );
 }
 
 /** 2 - The three promises. */
 export function StepHow() {
   const t = useTranslations("beta.how");
-  const items = [1, 2, 3] as const;
+  const items = [
+    { n: 1, top: 307 },
+    { n: 2, top: 396 },
+    { n: 3, top: 485 },
+  ] as const;
 
   return (
-    <div className="space-y-8">
-      <BetaTitle>{t("title")}</BetaTitle>
-      <ol className="space-y-7">
-        {items.map((n) => (
-          <li key={n} className="flex gap-3">
-            <span
-              className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-bold"
-              style={{ backgroundColor: "var(--beta-ink)", color: "var(--beta-bg)" }}
-              aria-hidden
-            >
-              {n}
-            </span>
-            <div className="space-y-1">
-              <h2 className="text-base font-bold sm:text-lg" style={{ color: "var(--beta-ink)" }}>
-                {t(`item${n}.title`)}
-              </h2>
-              <p className="text-sm leading-relaxed" style={{ color: "var(--beta-body)" }}>
-                {t(`item${n}.body`)}
-              </p>
-            </div>
-          </li>
-        ))}
-      </ol>
-    </div>
+    <>
+      <Title top={201}>{t("title")}</Title>
+      {items.map(({ n, top }) => (
+        <Box key={n} left={40} top={top} width={322} height={56}>
+          <span
+            className="absolute left-0 top-0 flex items-center justify-center rounded-full font-bold text-white"
+            style={{
+              width: 20,
+              height: 20,
+              backgroundColor: "var(--beta-navy)",
+              fontSize: 15,
+              lineHeight: "18px",
+            }}
+            aria-hidden
+          >
+            {n}
+          </span>
+          <h2
+            className="absolute top-0 font-bold"
+            style={{ left: 32, fontSize: 16, lineHeight: "19px", color: INK }}
+          >
+            {t(`item${n}.title`)}
+          </h2>
+          <p className="absolute" style={{ left: 32, top: 26, width: 290, ...body12 }}>
+            {t(`item${n}.body`)}
+          </p>
+        </Box>
+      ))}
+    </>
   );
 }
 
@@ -54,20 +77,24 @@ export function StepHow() {
 export function StepNotYet() {
   const t = useTranslations("beta.notYet");
   return (
-    <div className="space-y-6">
-      <BetaTitle>{t("title")}</BetaTitle>
-      <BetaLead>{t("body")}</BetaLead>
-      <div className="flex justify-center pt-2">
+    <>
+      <Title top={201}>{t("title")}</Title>
+      <Box left={56} top={246} width={290}>
+        <p className="text-center" style={body12}>
+          {t("body")}
+        </p>
+      </Box>
+      <Box left={101} top={313} width={200} height={333}>
         <Image
           src="/beta/feed-mockup.png"
           alt={t("mockupAlt")}
-          width={196}
-          height={326}
-          className="h-auto w-44 sm:w-52"
-          priority={false}
+          width={900}
+          height={1561}
+          className="h-full w-full object-contain"
+          style={{ filter: "drop-shadow(8px 11px 16.3px rgba(0, 0, 0, 0.25))" }}
         />
-      </div>
-    </div>
+      </Box>
+    </>
   );
 }
 
@@ -75,6 +102,8 @@ export type EmailStepState = {
   email: string;
   contactConsent: boolean;
   updatesConsent: boolean;
+  /** Honeypot: stays empty unless a bot fills the form. */
+  company: string;
 };
 
 /** 4 - The email form. */
@@ -90,92 +119,148 @@ export function StepEmail({
   const t = useTranslations("beta.email");
 
   return (
-    <div className="space-y-8">
-      <BetaTitle>{t("title")}</BetaTitle>
-      <BetaLead>{t.rich("body", { b: bold })}</BetaLead>
+    <>
+      <Title top={201}>{t("title")}</Title>
+      <Box left={56} top={322} width={290}>
+        <p className="text-center" style={body16}>
+          {t.rich("body", { b: bold })}
+        </p>
+      </Box>
 
-      <div className="space-y-4">
-        <div className="space-y-2">
-          <label htmlFor="beta-email" className="sr-only">
-            {t("fieldLabel")}
-          </label>
-          <input
-            id="beta-email"
-            name="email"
-            type="email"
-            inputMode="email"
-            autoComplete="email"
-            required
-            maxLength={254}
-            placeholder={t("placeholder")}
-            value={state.email}
-            onChange={(e) => onChange({ email: e.target.value })}
-            aria-invalid={error ? true : undefined}
-            aria-describedby={error ? "beta-email-error" : undefined}
-            className="w-full rounded-full border bg-transparent px-6 py-4 text-center text-base outline-none placeholder:opacity-70 focus-visible:ring-2"
-            style={
-              {
-                borderColor: error ? "var(--beta-accent)" : "var(--beta-line)",
-                color: "var(--beta-ink)",
-                "--tw-ring-color": "var(--beta-ink)",
-              } as React.CSSProperties
-            }
-          />
-          {error ? (
-            <p id="beta-email-error" role="alert" className="px-2 text-center text-xs" style={{ color: "var(--beta-ink)" }}>
-              {error}
-            </p>
-          ) : null}
-        </div>
+      <Box top={495} width={253} height={60}>
+        <label htmlFor="beta-email" className="sr-only">
+          {t("fieldLabel")}
+        </label>
+        <input
+          id="beta-email"
+          name="email"
+          type="email"
+          inputMode="email"
+          autoComplete="email"
+          required
+          maxLength={254}
+          placeholder={t("placeholder")}
+          value={state.email}
+          onChange={(e) => onChange({ email: e.target.value })}
+          aria-invalid={error ? true : undefined}
+          aria-describedby={error ? "beta-email-error" : undefined}
+          className="h-full w-full rounded-[35px] border text-center outline-none focus-visible:ring-2"
+          style={
+            {
+              padding: "17px 24px",
+              backgroundColor: "var(--beta-bg)",
+              borderColor: error ? "var(--beta-accent)" : "var(--beta-cta)",
+              color: INK,
+              fontSize: 20,
+              lineHeight: "24px",
+              "--tw-ring-color": "var(--beta-navy)",
+            } as React.CSSProperties
+          }
+        />
+      </Box>
 
-        <BetaCheckbox
-          id="beta-consent-contact"
-          checked={state.contactConsent}
-          onChange={(checked) => onChange({ contactConsent: checked })}
-          label={t("consentContact")}
-        />
-        <BetaCheckbox
-          id="beta-consent-updates"
-          checked={state.updatesConsent}
-          onChange={(checked) => onChange({ updatesConsent: checked })}
-          label={t("consentUpdates")}
-        />
-      </div>
-    </div>
+      {error ? (
+        <Box left={56} top={559} width={290}>
+          <p
+            id="beta-email-error"
+            role="alert"
+            className="text-center"
+            style={{ fontSize: 10, lineHeight: "12px", color: INK }}
+          >
+            {error}
+          </p>
+        </Box>
+      ) : null}
+
+      {/* Honeypot: off-screen, skipped by keyboard and hidden from assistive tech */}
+      <input
+        type="text"
+        name="company"
+        tabIndex={-1}
+        aria-hidden
+        autoComplete="off"
+        value={state.company}
+        onChange={(e) => onChange({ company: e.target.value })}
+        className="pointer-events-none absolute opacity-0"
+        style={{ left: -9999, top: 0, width: 1, height: 1 }}
+      />
+
+      <Consent
+        id="beta-consent-contact"
+        top={573}
+        checked={state.contactConsent}
+        onChange={(checked) => onChange({ contactConsent: checked })}
+        label={t("consentContact")}
+      />
+      <Consent
+        id="beta-consent-updates"
+        top={611}
+        checked={state.updatesConsent}
+        onChange={(checked) => onChange({ updatesConsent: checked })}
+        label={t("consentUpdates")}
+      />
+    </>
   );
 }
 
-function BetaCheckbox({
+/** 15x15 square, filled when checked - the design's own checkbox. */
+function Consent({
   id,
+  top,
   checked,
   onChange,
   label,
 }: {
   id: string;
+  top: number;
   checked: boolean;
   onChange: (checked: boolean) => void;
   label: string;
 }) {
   return (
-    <div className="flex items-start gap-3 px-1">
+    <Box left={81} top={top} width={240} height={24}>
       <input
         id={id}
         type="checkbox"
         checked={checked}
         onChange={(e) => onChange(e.target.checked)}
-        className="mt-0.5 h-4 w-4 shrink-0 cursor-pointer rounded border focus-visible:ring-2"
+        className="peer absolute left-0 top-0 cursor-pointer appearance-none rounded-[2px] border focus-visible:ring-2 focus-visible:ring-offset-1"
         style={
           {
-            accentColor: "var(--beta-accent)",
-            borderColor: "var(--beta-line)",
-            "--tw-ring-color": "var(--beta-ink)",
+            width: 15,
+            height: 15,
+            borderColor: "var(--beta-accent)",
+            backgroundColor: checked ? "var(--beta-accent)" : "transparent",
+            "--tw-ring-color": "var(--beta-navy)",
+            "--tw-ring-offset-color": "var(--beta-bg)",
           } as React.CSSProperties
         }
       />
-      <label htmlFor={id} className="cursor-pointer text-xs leading-snug" style={{ color: "var(--beta-body)" }}>
+      {checked ? (
+        <svg
+          viewBox="0 0 15 15"
+          className="pointer-events-none absolute left-0 top-0"
+          style={{ width: 15, height: 15 }}
+          aria-hidden
+        >
+          <path
+            d="M3 8 L6 11 L12 4"
+            fill="none"
+            stroke="var(--beta-bg)"
+            strokeWidth={1.5}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
+      ) : null}
+      <label
+        htmlFor={id}
+        className="absolute top-0 cursor-pointer"
+        style={{ left: 27, width: 213, fontSize: 10, lineHeight: "12px", color: INK }}
+      >
         {label}
       </label>
-    </div>
+    </Box>
   );
 }
 
@@ -183,8 +268,9 @@ function BetaCheckbox({
 export function StepDone() {
   const t = useTranslations("beta.done");
   return (
-    <div className="space-y-2">
-      <BetaTitle className="text-xl sm:text-2xl">{t("title")}</BetaTitle>
-    </div>
+    <>
+      <Title top={342}>{t("title")}</Title>
+      <BetaSocials />
+    </>
   );
 }

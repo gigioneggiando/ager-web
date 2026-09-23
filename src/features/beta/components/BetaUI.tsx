@@ -1,84 +1,130 @@
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 
-/** Shared primitives for the beta onboarding screens. */
+/**
+ * Primitives for the onboarding, expressed in the coordinates of the 402x874
+ * Figma frame. The whole frame is scaled as one (see .beta-stage), so every
+ * value here is the design value, unmodified.
+ */
 
-export function BetaTitle({
-  children,
+/** Absolute box inside the stage. */
+export function Box({
+  left,
+  top,
+  width,
+  height,
   className,
+  style,
+  children,
 }: {
-  children: React.ReactNode;
+  left?: number;
+  top: number;
+  width?: number;
+  height?: number;
   className?: string;
+  style?: React.CSSProperties;
+  children?: React.ReactNode;
 }) {
+  const centred = left === undefined;
   return (
-    <h1
-      className={cn(
-        "text-balance text-center text-2xl font-bold leading-tight sm:text-3xl",
-        className
-      )}
-      style={{ color: "var(--beta-ink)" }}
+    <div
+      className={cn("absolute", className)}
+      style={{
+        top,
+        ...(centred
+          ? { left: "50%", transform: "translateX(-50%)" }
+          : { left }),
+        width,
+        height,
+        ...style,
+      }}
     >
       {children}
-    </h1>
+    </div>
   );
 }
 
-export function BetaLead({
+/** 20/24 bold, the screen title. */
+export function Title({
   children,
-  className,
+  color = "var(--beta-ink)",
+  top,
 }: {
   children: React.ReactNode;
-  className?: string;
+  color?: string;
+  top: number;
 }) {
   return (
-    <p
-      className={cn("text-pretty text-center text-sm leading-relaxed sm:text-base", className)}
-      style={{ color: "var(--beta-body)" }}
-    >
-      {children}
-    </p>
+    <Box left={30} top={top} width={342}>
+      <h1
+        className="text-center font-bold"
+        style={{ fontSize: 20, lineHeight: "24px", color }}
+      >
+        {children}
+      </h1>
+    </Box>
   );
 }
 
-const ctaClasses = cn(
-  "block w-full rounded-full px-8 py-4 text-center text-base font-medium transition-opacity",
-  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2",
-  "disabled:cursor-not-allowed disabled:opacity-40",
-  "hover:opacity-90"
-);
+const ctaClass =
+  "inline-flex items-center justify-center rounded-[35px] transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-40";
 
-const ctaStyle = {
+const ctaStyle: React.CSSProperties = {
+  padding: "17px 52px",
   backgroundColor: "var(--beta-cta)",
   color: "var(--beta-cta-ink)",
-  "--tw-ring-color": "var(--beta-ink)",
-  "--tw-ring-offset-color": "var(--beta-bg)",
-} as React.CSSProperties;
+  fontSize: 20,
+  lineHeight: "24px",
+  whiteSpace: "nowrap",
+  ...({
+    "--tw-ring-color": "var(--beta-navy)",
+    "--tw-ring-offset-color": "var(--beta-bg)",
+  } as React.CSSProperties),
+};
 
-/** Same pill as BetaButton, but a real link (used for "open the feed"). */
-export function BetaLinkButton({
-  href,
+/** The pill button. Width comes from the label, exactly as in the design. */
+export function Cta({
+  top,
   children,
-  className,
+  onClick,
+  disabled,
 }: {
-  href: string;
+  top: number;
   children: React.ReactNode;
-  className?: string;
+  onClick?: () => void;
+  disabled?: boolean;
 }) {
   return (
-    <Link href={href} className={cn(ctaClasses, className)} style={ctaStyle}>
-      {children}
-    </Link>
+    <Box top={top}>
+      <button type="button" onClick={onClick} disabled={disabled} className={ctaClass} style={ctaStyle}>
+        {children}
+      </button>
+    </Box>
   );
 }
 
-export function BetaButton({
+/** Same pill, as a link (the last screen leaves the site). */
+export function CtaLink({
+  top,
+  href,
   children,
-  className,
-  ...props
-}: React.ButtonHTMLAttributes<HTMLButtonElement>) {
+}: {
+  top: number;
+  href: string;
+  children: React.ReactNode;
+}) {
+  const isExternal = /^https?:\/\//.test(href);
   return (
-    <button className={cn(ctaClasses, className)} style={ctaStyle} {...props}>
-      {children}
-    </button>
+    <Box top={top}>
+      {isExternal ? (
+        <a href={href} rel="noopener" className={ctaClass} style={ctaStyle}>
+          {children}
+        </a>
+      ) : (
+        <Link href={href} className={ctaClass} style={ctaStyle}>
+          {children}
+        </Link>
+      )}
+    </Box>
   );
 }
