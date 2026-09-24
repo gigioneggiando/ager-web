@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const appendRow = vi.fn();
 const verifyCaptcha = vi.fn();
 
-vi.mock("@/lib/beta/googleSheets", () => ({
+vi.mock("@/lib/beta/signupStore", () => ({
   appendRow: (...args: unknown[]) => appendRow(...args),
 }));
 

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { verifyCaptcha } from "@/lib/beta/captcha";
-import { appendRow } from "@/lib/beta/googleSheets";
+import { appendRow } from "@/lib/beta/signupStore";
 import { MIN_ELAPSED_MS, betaSignupSchema } from "@/lib/beta/signupSchema";
 import { logProxyEvent } from "@/app/api/auth/_shared";
 
