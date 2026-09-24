@@ -3,23 +3,27 @@
  *
  * It describes exactly what `/api/beta-signup` does and nothing more: the email,
  * the two consents, the locale and the timestamp, written to one private
- * spreadsheet. Anything marked DA_COMPLETARE needs a real-world fact that only
- * the data controller can supply.
+ * spreadsheet.
  *
  * This is not legal advice - it is a faithful description of the implementation,
  * meant to be reviewed by someone qualified before it goes live.
  */
 
-/** Placeholders that must be filled before publishing. */
+/**
+ * Ager has no legal entity yet, so the controller is a natural person and the
+ * contact point is the project mailbox. Once an association exists, this is the
+ * block to update - name, registered address and tax number.
+ */
 export const CONTROLLER = {
-  legalName: "DA_COMPLETARE — nome legale del titolare",
-  address: "DA_COMPLETARE — indirizzo",
-  taxId: "DA_COMPLETARE — codice fiscale / partita IVA",
+  legalName: "Simone Gandini",
   email: "ager.org@gmail.com",
 };
 
 /** How long a signup is kept. */
-export const RETENTION_MONTHS = "DA_COMPLETARE";
+export const RETENTION_MONTHS = 24;
+
+const UPDATED_AT_IT = "Ultimo aggiornamento: 24 settembre 2026";
+const UPDATED_AT_EN = "Last updated: 24 September 2026";
 
 export type PrivacySection = {
   heading: string;
@@ -37,14 +41,14 @@ export type PrivacyContent = {
 
 export const betaPrivacyIt: PrivacyContent = {
   title: "Informativa privacy — beta di Ager",
-  updatedAt: "Ultimo aggiornamento: DA_COMPLETARE",
+  updatedAt: UPDATED_AT_IT,
   intro:
     "Questa informativa riguarda solo i dati che raccogliamo quando lasci la tua email per entrare nella beta di Ager. È scritta ai sensi degli articoli 13 e 14 del Regolamento (UE) 2016/679 (GDPR).",
   sections: [
     {
       heading: "Chi tratta i tuoi dati",
       paragraphs: [
-        `Il titolare del trattamento è ${CONTROLLER.legalName}, con sede in ${CONTROLLER.address}, ${CONTROLLER.taxId}.`,
+        `Il titolare del trattamento è ${CONTROLLER.legalName}, che porta avanti il progetto Ager come persona fisica: al momento non esiste un ente giuridico dietro al progetto.`,
         `Per qualsiasi domanda o richiesta puoi scrivere a ${CONTROLLER.email}.`,
         "Non abbiamo nominato un Responsabile della protezione dei dati (DPO), perché non ricorrono i presupposti dell'articolo 37 del GDPR.",
       ],
@@ -82,7 +86,7 @@ export const betaPrivacyIt: PrivacyContent = {
       paragraphs: [
         "I dati vengono scritti in un unico foglio di calcolo privato ospitato su Google Sheets, accessibile solo al titolare tramite il proprio account protetto. Il sito può soltanto aggiungere una riga a quel foglio: non esiste nessuna pagina o funzione pubblica che possa rileggere gli iscritti.",
         "Il fornitore del servizio è Google Ireland Limited, che agisce come responsabile del trattamento. Eventuali trasferimenti di dati fuori dallo Spazio economico europeo avvengono sulla base delle clausole contrattuali standard approvate dalla Commissione europea.",
-        "Per difendere il modulo dagli invii automatici usiamo hCaptcha, di Intuition Machines, Inc. Il servizio tratta alcuni dati tecnici del tuo dispositivo al solo scopo di distinguere una persona da un programma; non riceve il tuo indirizzo email.",
+        "Non ci appoggiamo a nessun altro fornitore. Per difendere il modulo dagli invii automatici usiamo solo controlli che girano sul nostro server e non raccolgono nulla su di te.",
       ],
     },
     {
@@ -111,14 +115,14 @@ export const betaPrivacyIt: PrivacyContent = {
 
 export const betaPrivacyEn: PrivacyContent = {
   title: "Privacy notice — Ager beta",
-  updatedAt: "Last updated: DA_COMPLETARE",
+  updatedAt: UPDATED_AT_EN,
   intro:
     "This notice covers only the data we collect when you leave your email to join the Ager beta. It is written under Articles 13 and 14 of Regulation (EU) 2016/679 (GDPR).",
   sections: [
     {
       heading: "Who processes your data",
       paragraphs: [
-        `The data controller is ${CONTROLLER.legalName}, ${CONTROLLER.address}, ${CONTROLLER.taxId}.`,
+        `The data controller is ${CONTROLLER.legalName}, who runs the Ager project as a natural person: there is no legal entity behind the project at this time.`,
         `For any question or request you can write to ${CONTROLLER.email}.`,
         "We have not appointed a Data Protection Officer, as the conditions in Article 37 GDPR do not apply.",
       ],
@@ -156,7 +160,7 @@ export const betaPrivacyEn: PrivacyContent = {
       paragraphs: [
         "The data is written to a single private spreadsheet hosted on Google Sheets, reachable only by the controller through their own protected account. The website can only append a row to that sheet: no public page or function can read the signups back.",
         "The provider is Google Ireland Limited, acting as data processor. Any transfer outside the European Economic Area relies on the standard contractual clauses approved by the European Commission.",
-        "To protect the form from automated submissions we use hCaptcha, by Intuition Machines, Inc. The service processes some technical data from your device for the sole purpose of telling a person from a program; it does not receive your email address.",
+        "We rely on no other provider. To protect the form from automated submissions we only use checks that run on our own server and collect nothing about you.",
       ],
     },
     {
