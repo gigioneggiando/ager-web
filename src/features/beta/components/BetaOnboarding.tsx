@@ -170,30 +170,33 @@ export default function BetaOnboarding() {
           <BetaMark size={44} top={69} label={t("markAlt")} />
         )}
 
-        {step === 0 ? <StepIntro /> : null}
-        {step === 1 ? <StepHow /> : null}
-        {step === 2 ? <StepNotYet /> : null}
-        {step === 3 ? (
-          <StepEmail
-            state={form}
-            onChange={(next) => {
-              setForm((current) => ({ ...current, ...next }));
-              if (next.email !== undefined) setEmailError(null);
-            }}
-            error={emailError}
-          />
-        ) : null}
-        {step === 4 ? <StepDone /> : null}
+        {/* Keyed by step: remounting replays the staggered entrance */}
+        <div key={step} className="beta-enter absolute inset-0">
+          {step === 0 ? <StepIntro /> : null}
+          {step === 1 ? <StepHow /> : null}
+          {step === 2 ? <StepNotYet /> : null}
+          {step === 3 ? (
+            <StepEmail
+              state={form}
+              onChange={(next) => {
+                setForm((current) => ({ ...current, ...next }));
+                if (next.email !== undefined) setEmailError(null);
+              }}
+              error={emailError}
+            />
+          ) : null}
+          {step === 4 ? <StepDone /> : null}
 
-        {isLastStep ? (
-          <CtaLink top={CTA_TOP[step]} href={`${FEED_BASE_URL}/${locale}`}>
-            {ctaLabel}
-          </CtaLink>
-        ) : (
-          <Cta top={CTA_TOP[step]} onClick={handleNext} disabled={submitting}>
-            {ctaLabel}
-          </Cta>
-        )}
+          {isLastStep ? (
+            <CtaLink top={CTA_TOP[step]} href={`${FEED_BASE_URL}/${locale}`}>
+              {ctaLabel}
+            </CtaLink>
+          ) : (
+            <Cta top={CTA_TOP[step]} onClick={handleNext} disabled={submitting}>
+              {ctaLabel}
+            </Cta>
+          )}
+        </div>
 
         <div id={captchaContainerId} />
 

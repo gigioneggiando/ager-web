@@ -16,7 +16,7 @@ export default function BetaMark({
     <span
       role="img"
       aria-label={label}
-      className="absolute left-1/2 -translate-x-1/2"
+      className="beta-mark absolute left-1/2 -translate-x-1/2"
       style={{
         top,
         width: size,

@@ -740,7 +740,8 @@
       "consentUpdates": "I want to get occasional updates about Ager",
       "invalid": "Check the address: that does not look like a valid email",
       "cta": "Confirm email",
-      "failed": "We could not save your email. Please try again shortly"
+      "failed": "We could not save your email. Please try again shortly",
+      "privacyLink": "How we handle your email"
     },
     "done": {
       "title": "You're in",

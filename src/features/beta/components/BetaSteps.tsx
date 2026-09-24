@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import { useTranslations } from "next-intl";
+import { useAppLocale } from "@/i18n/useAppLocale";
 import BetaSocials from "./BetaSocials";
 import { Box, Title } from "./BetaUI";
 
@@ -117,6 +118,7 @@ export function StepEmail({
   error: string | null;
 }) {
   const t = useTranslations("beta.email");
+  const { locale } = useAppLocale();
 
   return (
     <>
@@ -172,19 +174,6 @@ export function StepEmail({
         </Box>
       ) : null}
 
-      {/* Honeypot: off-screen, skipped by keyboard and hidden from assistive tech */}
-      <input
-        type="text"
-        name="company"
-        tabIndex={-1}
-        aria-hidden
-        autoComplete="off"
-        value={state.company}
-        onChange={(e) => onChange({ company: e.target.value })}
-        className="pointer-events-none absolute opacity-0"
-        style={{ left: -9999, top: 0, width: 1, height: 1 }}
-      />
-
       <Consent
         id="beta-consent-contact"
         top={573}
@@ -198,6 +187,33 @@ export function StepEmail({
         checked={state.updatesConsent}
         onChange={(checked) => onChange({ updatesConsent: checked })}
         label={t("consentUpdates")}
+      />
+
+      {/* Not in the Figma frame: the notice has to be reachable where the
+          address is collected. Opens in a new tab so the form is not lost. */}
+      <Box top={760} width={272}>
+        <a
+          href={`/${locale}/beta/privacy`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="block text-center underline underline-offset-2"
+          style={{ fontSize: 9, lineHeight: "11px", color: INK, opacity: 0.75 }}
+        >
+          {t("privacyLink")}
+        </a>
+      </Box>
+
+      {/* Honeypot: off-screen, skipped by keyboard and hidden from assistive tech */}
+      <input
+        type="text"
+        name="company"
+        tabIndex={-1}
+        aria-hidden
+        autoComplete="off"
+        value={state.company}
+        onChange={(e) => onChange({ company: e.target.value })}
+        className="pointer-events-none absolute opacity-0"
+        style={{ left: -9999, top: 0, width: 1, height: 1 }}
       />
     </>
   );

@@ -31,10 +31,11 @@ export function Box({
       className={cn("absolute", className)}
       style={{
         top,
+        // Centred with auto margins, never with a transform: the entrance
+        // animation animates transform and would cancel the centring.
         ...(centred
-          ? { left: "50%", transform: "translateX(-50%)" }
-          : { left }),
-        width,
+          ? { left: 0, right: 0, marginInline: "auto", width: width ?? "fit-content" }
+          : { left, width }),
         height,
         ...style,
       }}
