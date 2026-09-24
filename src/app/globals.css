@@ -91,3 +91,87 @@
     @apply bg-background text-foreground;
   }
 }
+
+/*
+ * Beta onboarding palette.
+ * Scoped to .beta-theme: the onboarding has its own brand look (cream + navy)
+ * that does not follow the app tokens, but it still honours light/dark.
+ */
+.beta-theme {
+  --beta-bg: #efe9df;
+  --beta-ink: #1c1c1c;
+  --beta-navy: #0f2a44;
+  --beta-cta: #0f172a;
+  --beta-cta-ink: #f9faf7;
+  --beta-dot-idle: rgba(107, 114, 128, 0.8);
+  --beta-placeholder: #64748b;
+  --beta-accent: #6ea8d8;
+}
+
+.dark .beta-theme {
+  --beta-bg: #12161f;
+  --beta-ink: #efe9df;
+  --beta-navy: #9cc2e4;
+  --beta-cta: #efe9df;
+  --beta-cta-ink: #0f172a;
+  --beta-dot-idle: rgba(148, 156, 170, 0.8);
+  --beta-placeholder: #94a3b8;
+  --beta-accent: #6ea8d8;
+}
+
+/*
+ * The onboarding is a pixel-exact 402x874 Figma frame. It is rendered at that
+ * size and scaled as a whole, so nothing reflows and the design stays identical
+ * on every screen: never larger than 1.25x, never wider or taller than the viewport.
+ */
+.beta-stage {
+  width: 402px;
+  height: 874px;
+  transform: scale(min(1.25, 100vw / 402, 100dvh / 874));
+  transform-origin: center center;
+}
+
+/*
+ * Each screen fades its pieces in, top to bottom, when it becomes current.
+ * The wrapper is keyed by step, so React remounts it and the animation replays.
+ */
+@keyframes beta-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.beta-enter > * {
+  animation: beta-in 420ms cubic-bezier(0.22, 0.61, 0.36, 1) both;
+}
+
+.beta-enter > *:nth-child(1) { animation-delay: 60ms; }
+.beta-enter > *:nth-child(2) { animation-delay: 140ms; }
+.beta-enter > *:nth-child(3) { animation-delay: 220ms; }
+.beta-enter > *:nth-child(4) { animation-delay: 300ms; }
+.beta-enter > *:nth-child(5) { animation-delay: 380ms; }
+.beta-enter > *:nth-child(6) { animation-delay: 460ms; }
+.beta-enter > *:nth-child(7) { animation-delay: 540ms; }
+.beta-enter > *:nth-child(n + 8) { animation-delay: 620ms; }
+
+/* The mark changes size and position between the first screen and the rest. */
+.beta-mark {
+  transition: top 500ms cubic-bezier(0.22, 0.61, 0.36, 1),
+    width 500ms cubic-bezier(0.22, 0.61, 0.36, 1),
+    height 500ms cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .beta-enter > * {
+    animation: none;
+  }
+
+  .beta-mark {
+    transition: none;
+  }
+}
