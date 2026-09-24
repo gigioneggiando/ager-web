@@ -81,7 +81,7 @@ test("refuses a malformed address without calling the endpoint", async ({ page }
   await page.fill("#beta-email", "non-una-email");
   await page.getByRole("button", { name: "Conferma email", exact: true }).click();
 
-  await expect(page.getByRole("alert")).toBeVisible();
+  await expect(page.locator("#beta-email-error")).toBeVisible();
   await expect(page.getByRole("heading", { name: "Un'ultima cosa" })).toBeVisible();
   expect(called).toBe(false);
 });
@@ -94,7 +94,7 @@ test("keeps the visitor on the form when storing fails", async ({ page }) => {
   await page.fill("#beta-email", "persona@example.com");
   await page.getByRole("button", { name: "Conferma email", exact: true }).click();
 
-  await expect(page.getByRole("alert")).toBeVisible();
+  await expect(page.locator("#beta-email-error")).toBeVisible();
   await expect(page.getByRole("heading", { name: "Ci sei" })).toBeHidden();
 });
 
